@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { NButton, NInput } from 'naive-ui'
 import { useUserStore } from '@/stores/user'
@@ -14,6 +14,7 @@ const keyword = ref('')
 
 const hideChrome = computed(() => Boolean(route.meta.hideChrome))
 const flushMain = computed(() => route.name === 'home' || route.name === 'channel')
+const showBack = computed(() => route.name === 'detail' || route.name === 'search')
 
 const navs = [
   { to: '/', label: '首页', match: 'home' },
@@ -37,6 +38,19 @@ onMounted(async () => {
   await Promise.all([userStore.bootstrap(), sourcesStore.load().catch(() => undefined)])
 })
 
+watch(
+  () => route.query.q,
+  (q) => {
+    if (route.name === 'search' && typeof q === 'string') keyword.value = q
+  },
+  { immediate: true },
+)
+
+function goBack() {
+  if (window.history.length > 1) router.back()
+  else router.push('/')
+}
+
 function onSearch() {
   const q = keyword.value.trim()
   if (!q) return
@@ -47,7 +61,12 @@ function onSearch() {
 <template>
   <div class="shell">
     <header v-if="!hideChrome" class="topbar">
-      <button type="button" class="brand" @click="router.push('/')">my-movie</button>
+      <div class="brand-row">
+        <button v-if="showBack" type="button" class="back" aria-label="返回" @click="goBack">
+          ←
+        </button>
+        <button type="button" class="brand" @click="router.push('/')">my-movie</button>
+      </div>
       <nav class="nav" aria-label="主导航">
         <RouterLink
           v-for="item in navs"
@@ -76,7 +95,11 @@ function onSearch() {
       </div>
     </header>
     <main class="main" :class="{ immersive: hideChrome, flush: flushMain }">
-      <RouterView />
+      <RouterView v-slot="{ Component, route: r }">
+        <KeepAlive include="SearchView">
+          <component :is="Component" :key="r.name === 'search' ? 'search' : r.fullPath" />
+        </KeepAlive>
+      </RouterView>
     </main>
   </div>
 </template>
@@ -98,6 +121,30 @@ function onSearch() {
   align-items: center;
   padding: 0 var(--page-x);
   background: var(--bg);
+}
+
+.brand-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.back {
+  border: 0;
+  background: var(--bg-soft);
+  color: var(--text);
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.back:hover {
+  color: var(--accent);
 }
 
 .brand {

@@ -82,18 +82,3 @@ export interface FavoritePayload {
   title: string
   cover?: string
 }
-
-export interface PanSearchItem {
-  id: string
-  title: string
-  panType: string
-  menu: string
-  createdAt?: string
-  description?: string
-  sourceKey: 'xiageba'
-  sourceName: string
-}
-
-export interface PanDetail extends PanSearchItem {
-  videos: string[]
-}

@@ -6,11 +6,16 @@ export function fetchSources() {
 }
 
 export function searchVod(wd: string, sources?: string[]) {
-  return apiPost<SearchResponse>(API_PATHS.vodSearch, {
-    wd,
-    sources,
-    filterAdult: true,
-  })
+  // 对齐 LibreTV classic：默认不做黄滤（站点 yellowFilterEnabled 默认关闭）
+  return apiPost<SearchResponse>(
+    API_PATHS.vodSearch,
+    {
+      wd,
+      sources,
+      filterAdult: false,
+    },
+    { timeout: 90000 },
+  )
 }
 
 export function fetchDetail(source: string, id: string) {

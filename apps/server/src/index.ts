@@ -6,7 +6,6 @@ import { authRouter } from './routes/auth.js'
 import { vodRouter } from './routes/vod.js'
 import { proxyRouter } from './routes/proxy.js'
 import { userDataRouter } from './routes/user-data.js'
-import { panRouter } from './routes/pan.js'
 import { logger } from './utils/logger.js'
 
 const app = express()
@@ -23,7 +22,6 @@ app.use('/api', healthRouter)
 app.use('/api/auth', authRouter)
 app.use('/api/vod', vodRouter)
 app.use('/api/proxy', proxyRouter)
-app.use('/api/pan', panRouter)
 app.use('/api', userDataRouter)
 
 app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

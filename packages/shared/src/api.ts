@@ -11,9 +11,6 @@ export const API_PATHS = {
   progress: '/api/progress',
   history: '/api/history',
   favorites: '/api/favorites',
-  panSearch: '/api/pan/search',
-  panDetail: '/api/pan/detail',
-  panShareUrl: '/api/pan/share-url',
 } as const
 
 export type ApiPath = (typeof API_PATHS)[keyof typeof API_PATHS]

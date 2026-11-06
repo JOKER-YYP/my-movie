@@ -32,9 +32,7 @@ function libreTvProxyUrl(upstream: string): string {
   return `${base}/proxy/${encodeURIComponent(upstream)}`
 }
 
-export async function fetchCmsJson(upstreamUrl: string, timeoutMs: number): Promise<unknown> {
-  const mode = process.env.LIBRETV_PROXY_MODE || 'direct'
-  const url = mode === 'via_libretv' ? libreTvProxyUrl(upstreamUrl) : upstreamUrl
+async function fetchOnce(url: string, timeoutMs: number): Promise<unknown> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
   try {
@@ -45,10 +43,33 @@ export async function fetchCmsJson(upstreamUrl: string, timeoutMs: number): Prom
     if (!res.ok) {
       throw new Error(`上游 HTTP ${res.status}`)
     }
-    return await res.json()
+    const text = await res.text()
+    try {
+      return JSON.parse(text) as unknown
+    } catch {
+      const preview = text.trim().slice(0, 24)
+      throw new Error(`非 JSON 响应: ${preview || '(空)'}`)
+    }
   } finally {
     clearTimeout(timer)
   }
+}
+
+/** 对齐 LibreTV：优先经 /proxy/ 访问采集站；失败时可直连回退 */
+export async function fetchCmsJson(upstreamUrl: string, timeoutMs: number): Promise<unknown> {
+  const mode = process.env.LIBRETV_PROXY_MODE || 'via_libretv'
+  if (mode === 'direct') {
+    return fetchOnce(upstreamUrl, timeoutMs)
+  }
+  if (mode === 'via_libretv') {
+    try {
+      return await fetchOnce(libreTvProxyUrl(upstreamUrl), timeoutMs)
+    } catch {
+      // 公共代理偶发不可用时直连 CMS，行为仍对齐「能搜到尽量搜到」
+      return fetchOnce(upstreamUrl, timeoutMs)
+    }
+  }
+  return fetchOnce(upstreamUrl, timeoutMs)
 }
 
 export function buildSearchUrl(source: VodSource, wd: string, page = 1): string {
@@ -64,7 +85,28 @@ export function buildDetailUrl(source: VodSource, id: string): string {
   return `${base}?ac=videolist&ids=${encodeURIComponent(id)}`
 }
 
-const ADULT_KEYWORDS = ['伦理', '福利', '里番', '无码', 'SWAG', '成人', '色情']
+/** 对齐 LibreTV classic app.js 黄滤关键词 */
+const ADULT_KEYWORDS = [
+  '伦理片',
+  '福利',
+  '里番动漫',
+  '门事件',
+  '萝莉少女',
+  '制服诱惑',
+  '国产传媒',
+  'cosplay',
+  '黑丝诱惑',
+  '无码',
+  '日本无码',
+  '有码',
+  '日本有码',
+  'SWAG',
+  '网红主播',
+  '色情片',
+  '同性片',
+  '福利视频',
+  '福利片',
+]
 
 export function isAdultContent(item: Pick<VodSearchItem, 'title' | 'typeName'>): boolean {
   const text = `${item.title || ''} ${item.typeName || ''}`

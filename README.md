@@ -37,13 +37,10 @@ pnpm dev:desktop
 
 `apps/server/.env` 中：
 
-- `LIBRETV_PROXY_MODE=via_libretv`（默认）：经 https://libretv.liumingye.cn/proxy/ 访问采集站（国内网络更稳）
+- `LIBRETV_PROXY_MODE=via_libretv`（默认）：经 https://libretv.liumingye.cn/proxy/ 访问采集站（失败会直连回退）
 - `LIBRETV_PROXY_MODE=direct`：服务端直连 CMS
-
-### 网盘源（下歌吧）
-
-搜索页「网盘」Tab 对接 [so.liumingye.cn](https://so.liumingye.cn/#/)。  
-播放前请在 **设置** 登录夸克/百度；解析分享后走 Electron 流式代理（边下边播，不整文件落盘）。
+- `SEARCH_SOURCE_TIMEOUT_MS`：单源超时，默认 `15000`（对齐 LibreTV）
+- `SEARCH_MAX_PAGES`：单源最多翻页数，默认 `50`（对齐 LibreTV classic）
 
 ## 目录
 

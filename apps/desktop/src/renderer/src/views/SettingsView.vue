@@ -1,50 +1,12 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
-import { NButton, NCard, NSpace, NSwitch, NText, useMessage } from 'naive-ui'
+import { onMounted } from 'vue'
+import { NCard, NSpace, NSwitch, NText } from 'naive-ui'
 import { useSourcesStore } from '@/stores/sources'
 import { useSettingsStore } from '@/stores/settings'
 import { THEME_PRESETS, type ThemeId } from '@/themes/presets'
 
 const sourcesStore = useSourcesStore()
 const settings = useSettingsStore()
-const message = useMessage()
-const quarkOk = ref(false)
-const baiduOk = ref(false)
-
-async function refreshLogin() {
-  try {
-    quarkOk.value = Boolean(await window.myMovie?.quarkHasLogin?.())
-  } catch {
-    quarkOk.value = false
-  }
-  try {
-    baiduOk.value = Boolean(await window.myMovie?.baiduHasLogin?.())
-  } catch {
-    baiduOk.value = false
-  }
-}
-
-async function loginQuark() {
-  const ok = await window.myMovie?.quarkOpenLogin?.()
-  await refreshLogin()
-  message[ok ? 'success' : 'warning'](ok ? '夸克已登录' : '未完成夸克登录')
-}
-
-async function loginBaidu() {
-  const ok = await window.myMovie?.baiduOpenLogin?.()
-  await refreshLogin()
-  message[ok ? 'success' : 'warning'](ok ? '百度已登录' : '未完成百度登录')
-}
-
-async function logoutQuark() {
-  await window.myMovie?.quarkLogout?.()
-  await refreshLogin()
-}
-
-async function logoutBaidu() {
-  await window.myMovie?.baiduLogout?.()
-  await refreshLogin()
-}
 
 function pickTheme(id: ThemeId) {
   settings.setTheme(id)
@@ -52,7 +14,6 @@ function pickTheme(id: ThemeId) {
 
 onMounted(async () => {
   await sourcesStore.load()
-  await refreshLogin()
 })
 </script>
 
@@ -80,29 +41,6 @@ onMounted(async () => {
             <NText depth="3">{{ t.blurb }}</NText>
           </div>
         </button>
-      </div>
-    </NCard>
-
-    <NCard title="网盘登录（下歌吧边下边播）" style="margin-top: 16px">
-      <div class="row">
-        <div>
-          <div class="name">夸克网盘</div>
-          <NText depth="3">{{ quarkOk ? '已登录' : '未登录 · 播放夸克资源前需扫码' }}</NText>
-        </div>
-        <NSpace>
-          <NButton size="small" type="primary" @click="loginQuark">登录</NButton>
-          <NButton size="small" :disabled="!quarkOk" @click="logoutQuark">退出</NButton>
-        </NSpace>
-      </div>
-      <div class="row">
-        <div>
-          <div class="name">百度网盘</div>
-          <NText depth="3">{{ baiduOk ? '已登录' : '未登录 · 播放百度资源前需扫码' }}</NText>
-        </div>
-        <NSpace>
-          <NButton size="small" type="primary" @click="loginBaidu">登录</NButton>
-          <NButton size="small" :disabled="!baiduOk" @click="logoutBaidu">退出</NButton>
-        </NSpace>
       </div>
     </NCard>
 

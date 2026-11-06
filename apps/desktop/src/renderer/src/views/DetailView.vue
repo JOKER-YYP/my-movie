@@ -103,6 +103,9 @@ watch([source, id], load, { immediate: true })
 
 <template>
   <NSpin :show="loading">
+    <div class="page-bar">
+      <NButton quaternary @click="router.back()">← 返回</NButton>
+    </div>
     <div v-if="detail" class="detail">
       <div class="poster" :style="{ backgroundImage: detail.cover ? `url(${detail.cover})` : undefined }" />
       <div class="info">
@@ -171,6 +174,10 @@ watch([source, id], load, { immediate: true })
 </template>
 
 <style scoped lang="scss">
+.page-bar {
+  margin: 0 0 var(--space-3);
+}
+
 .detail {
   display: grid;
   grid-template-columns: minmax(180px, 240px) minmax(0, 1fr);
