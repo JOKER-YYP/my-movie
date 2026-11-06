@@ -78,10 +78,18 @@ onMounted(bootstrap)
           }}
         </p>
         <div class="cta">
-          <NButton type="primary" size="large" :disabled="!featured" @click="openFeatured">
+          <NButton
+            class="cta-primary"
+            type="primary"
+            size="large"
+            :disabled="!featured"
+            @click="openFeatured"
+          >
             立即观看
           </NButton>
-          <NButton size="large" secondary @click="router.push('/search?q=热播')">浏览更多</NButton>
+          <NButton class="cta-secondary" size="large" secondary @click="router.push('/search?q=热播')">
+            浏览更多
+          </NButton>
         </div>
       </div>
     </section>
@@ -157,7 +165,14 @@ p {
   margin-top: var(--space-5);
 }
 
+.cta-primary,
+.cta-secondary {
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  font-weight: 700 !important;
+}
+
 .content {
-  padding: var(--space-2) var(--page-x) var(--space-7);
+  padding: var(--space-5) var(--page-x) var(--space-7);
 }
 </style>

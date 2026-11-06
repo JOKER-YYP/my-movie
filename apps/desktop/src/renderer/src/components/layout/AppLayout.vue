@@ -62,8 +62,13 @@ function onSearch() {
   <div class="shell">
     <header v-if="!hideChrome" class="topbar">
       <div class="brand-row">
-        <button v-if="showBack" type="button" class="back" aria-label="返回" @click="goBack">
-          ←
+        <button v-if="showBack" type="button" class="icon-btn" aria-label="返回" @click="goBack">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+            <path
+              fill="currentColor"
+              d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"
+            />
+          </svg>
         </button>
         <button type="button" class="brand" @click="router.push('/')">my-movie</button>
       </div>
@@ -82,10 +87,11 @@ function onSearch() {
         <NInput
           v-model:value="keyword"
           clearable
+          round
           placeholder="搜索影片、演员、综艺…"
           @keyup.enter="onSearch"
         />
-        <NButton type="primary" @click="onSearch">搜索</NButton>
+        <NButton type="primary" class="search-btn" @click="onSearch">搜索</NButton>
       </div>
       <div class="user">
         <NButton v-if="userStore.user" quaternary @click="userStore.logout()">
@@ -116,35 +122,41 @@ function onSearch() {
   z-index: 20;
   height: var(--header-h);
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) minmax(200px, 320px) auto;
+  grid-template-columns: auto minmax(0, 1fr) minmax(220px, 340px) auto;
   gap: var(--space-4);
   align-items: center;
   padding: 0 var(--page-x);
-  background: var(--bg);
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 35%, transparent);
 }
 
 .brand-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   min-width: 0;
 }
 
-.back {
-  border: 0;
-  background: var(--bg-soft);
-  color: var(--text);
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 32px;
   height: 32px;
-  border-radius: var(--radius-pill);
+  border: 0;
+  border-radius: 50%;
+  background: var(--bg-soft);
+  color: var(--text);
   cursor: pointer;
-  font-size: 16px;
-  line-height: 1;
   flex-shrink: 0;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
 }
 
-.back:hover {
+.icon-btn:hover {
+  background: var(--bg-hover);
   color: var(--accent);
+  transform: scale(1.04);
 }
 
 .brand {
@@ -156,6 +168,7 @@ function onSearch() {
   font-weight: 700;
   color: var(--accent);
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .brand:hover {
@@ -164,7 +177,7 @@ function onSearch() {
 
 .nav {
   display: flex;
-  gap: 4px;
+  gap: 2px;
   overflow: auto;
   scrollbar-width: none;
 }
@@ -198,6 +211,19 @@ function onSearch() {
   display: flex;
   gap: var(--space-2);
   min-width: 0;
+  align-items: center;
+}
+
+.search :deep(.n-input) {
+  flex: 1;
+  min-width: 0;
+}
+
+.search-btn {
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  font-weight: 700 !important;
+  flex-shrink: 0;
 }
 
 .user :deep(.n-button) {
@@ -216,14 +242,14 @@ function onSearch() {
 @media (max-width: 980px) {
   .topbar {
     grid-template-columns: auto 1fr auto;
-    grid-template-rows: auto auto;
+    grid-template-rows: auto auto auto;
     height: auto;
     padding-top: 10px;
     padding-bottom: 10px;
     row-gap: 10px;
   }
 
-  .brand {
+  .brand-row {
     grid-column: 1;
   }
 

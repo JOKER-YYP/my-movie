@@ -16,9 +16,9 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div>
-    <h1>观看历史</h1>
-    <p class="hint">
+  <div class="page">
+    <h1 class="page-title">观看历史</h1>
+    <p class="page-hint">
       {{ userStore.token ? '已登录：云端与本地进度同步' : '未登录：进度保存在本机，登录后可云端同步' }}
     </p>
     <NEmpty v-if="!list.length" description="暂无记录">
@@ -31,13 +31,7 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-h1 {
-  margin: 0;
-}
-
-.hint {
-  margin: var(--space-2) 0 var(--space-5);
-  color: var(--text-muted);
-  font-size: 13px;
+.page {
+  max-width: 1200px;
 }
 </style>

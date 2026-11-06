@@ -207,7 +207,7 @@ onBeforeUnmount(clearCountdown)
 <template>
   <div class="play">
     <div class="toolbar">
-      <NButton quaternary @click="router.back()">返回</NButton>
+      <NButton quaternary class="back-btn" @click="router.back()">返回</NButton>
       <div class="title">
         {{ detail?.title || '播放中' }}
         <span v-if="episode"> · {{ episode.name }}</span>

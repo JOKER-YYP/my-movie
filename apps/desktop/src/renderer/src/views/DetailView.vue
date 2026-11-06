@@ -103,18 +103,15 @@ watch([source, id], load, { immediate: true })
 
 <template>
   <NSpin :show="loading">
-    <div class="page-bar">
-      <NButton quaternary @click="router.back()">← 返回</NButton>
-    </div>
     <div v-if="detail" class="detail">
       <div class="poster" :style="{ backgroundImage: detail.cover ? `url(${detail.cover})` : undefined }" />
       <div class="info">
         <h1>{{ detail.title }}</h1>
         <div class="meta">
-          <span>{{ detail.sourceName }}</span>
-          <span v-if="detail.typeName">{{ detail.typeName }}</span>
-          <span v-if="detail.year">{{ detail.year }}</span>
-          <span v-if="detail.remarks">{{ detail.remarks }}</span>
+          <span class="pill">{{ detail.sourceName }}</span>
+          <span v-if="detail.typeName" class="pill">{{ detail.typeName }}</span>
+          <span v-if="detail.year" class="pill">{{ detail.year }}</span>
+          <span v-if="detail.remarks" class="pill">{{ detail.remarks }}</span>
         </div>
         <p class="desc">{{ detail.content || '暂无简介' }}</p>
         <div class="actions">
@@ -174,10 +171,6 @@ watch([source, id], load, { immediate: true })
 </template>
 
 <style scoped lang="scss">
-.page-bar {
-  margin: 0 0 var(--space-3);
-}
-
 .detail {
   display: grid;
   grid-template-columns: minmax(180px, 240px) minmax(0, 1fr);
@@ -194,17 +187,26 @@ watch([source, id], load, { immediate: true })
 }
 
 h1 {
-  margin: 0 0 10px;
+  margin: 0 0 12px;
   font-size: 24px;
 }
 
 .meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  color: var(--text-muted);
+  gap: 8px;
   margin-bottom: 14px;
-  font-size: 13px;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-soft);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .desc {

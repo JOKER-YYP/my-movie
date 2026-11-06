@@ -27,8 +27,16 @@ function scrollBy(dir: -1 | 1) {
         <p v-if="subtitle">{{ subtitle }}</p>
       </div>
       <div class="ops">
-        <button type="button" class="nav-btn" aria-label="向左滚动" @click="scrollBy(-1)">‹</button>
-        <button type="button" class="nav-btn" aria-label="向右滚动" @click="scrollBy(1)">›</button>
+        <button type="button" class="nav-btn" aria-label="向左滚动" @click="scrollBy(-1)">
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+            <path fill="currentColor" d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z" />
+          </svg>
+        </button>
+        <button type="button" class="nav-btn" aria-label="向右滚动" @click="scrollBy(1)">
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+            <path fill="currentColor" d="M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" />
+          </svg>
+        </button>
         <RouterLink v-if="moreTo" class="more" :to="moreTo">更多</RouterLink>
       </div>
     </div>
@@ -72,6 +80,9 @@ p {
 }
 
 .nav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 32px;
   height: 32px;
   border-radius: 50%;

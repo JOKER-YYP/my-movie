@@ -146,7 +146,8 @@ p {
   color: var(--on-accent);
   font-weight: 700;
   font-size: 14px;
-  letter-spacing: 0.14px;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
   cursor: pointer;
   max-width: 100%;
   overflow: hidden;
