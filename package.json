@@ -1,0 +1,28 @@
+{
+  "name": "my-movie",
+  "private": true,
+  "version": "0.1.0",
+  "description": "仿腾讯视频桌面播放器 · Vue3 + Electron + Express",
+  "packageManager": "pnpm@9.15.0",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "electron",
+      "esbuild",
+      "@prisma/client",
+      "prisma",
+      "@parcel/watcher"
+    ]
+  },
+  "scripts": {
+    "dev": "pnpm -r --parallel --filter @my-movie/server --filter @my-movie/desktop run dev",
+    "dev:server": "pnpm --filter @my-movie/server dev",
+    "dev:desktop": "pnpm --filter @my-movie/desktop dev",
+    "build": "pnpm --filter @my-movie/shared build && pnpm --filter @my-movie/server build && pnpm --filter @my-movie/desktop build",
+    "build:shared": "pnpm --filter @my-movie/shared build",
+    "postinstall": "pnpm --filter @my-movie/shared build",
+    "typecheck": "pnpm -r run typecheck"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

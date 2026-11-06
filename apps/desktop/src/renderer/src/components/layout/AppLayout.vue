@@ -1,0 +1,198 @@
+<script setup lang="ts">
+import { computed, onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { NButton, NInput } from 'naive-ui'
+import { useUserStore } from '@/stores/user'
+import { useSourcesStore } from '@/stores/sources'
+import { CHANNELS } from '@/constants/channels'
+
+const route = useRoute()
+const router = useRouter()
+const userStore = useUserStore()
+const sourcesStore = useSourcesStore()
+const keyword = ref('')
+
+const hideChrome = computed(() => Boolean(route.meta.hideChrome))
+const flushMain = computed(() => route.name === 'home' || route.name === 'channel')
+
+const navs = [
+  { to: '/', label: '首页', match: 'home' },
+  ...CHANNELS.map((c) => ({
+    to: `/channel/${c.key}`,
+    label: c.label,
+    match: c.key,
+  })),
+  { to: '/history', label: '历史', match: 'history' },
+  { to: '/favorites', label: '收藏', match: 'favorites' },
+  { to: '/settings', label: '设置', match: 'settings' },
+]
+
+function isActive(item: (typeof navs)[number]) {
+  if (item.match === 'home') return route.name === 'home'
+  if (route.name === 'channel') return String(route.params.type) === item.match
+  return route.name === item.match
+}
+
+onMounted(async () => {
+  await Promise.all([userStore.bootstrap(), sourcesStore.load().catch(() => undefined)])
+})
+
+function onSearch() {
+  const q = keyword.value.trim()
+  if (!q) return
+  router.push({ path: '/search', query: { q } })
+}
+</script>
+
+<template>
+  <div class="shell">
+    <header v-if="!hideChrome" class="topbar">
+      <button type="button" class="brand" @click="router.push('/')">my-movie</button>
+      <nav class="nav" aria-label="主导航">
+        <RouterLink
+          v-for="item in navs"
+          :key="item.to"
+          :to="item.to"
+          class="nav-item"
+          :class="{ active: isActive(item) }"
+        >
+          {{ item.label }}
+        </RouterLink>
+      </nav>
+      <div class="search">
+        <NInput
+          v-model:value="keyword"
+          clearable
+          placeholder="搜索影片、演员、综艺…"
+          @keyup.enter="onSearch"
+        />
+        <NButton type="primary" @click="onSearch">搜索</NButton>
+      </div>
+      <div class="user">
+        <NButton v-if="userStore.user" quaternary @click="userStore.logout()">
+          {{ userStore.user.nickname || userStore.user.username }}
+        </NButton>
+        <NButton v-else quaternary @click="router.push('/login')">登录</NButton>
+      </div>
+    </header>
+    <main class="main" :class="{ immersive: hideChrome, flush: flushMain }">
+      <RouterView />
+    </main>
+  </div>
+</template>
+
+<style scoped lang="scss">
+.shell {
+  min-height: 100vh;
+  background: var(--bg);
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  height: var(--header-h);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) minmax(200px, 320px) auto;
+  gap: var(--space-4);
+  align-items: center;
+  padding: 0 var(--page-x);
+  background: var(--bg);
+}
+
+.brand {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.brand:hover {
+  filter: brightness(1.08);
+}
+
+.nav {
+  display: flex;
+  gap: 4px;
+  overflow: auto;
+  scrollbar-width: none;
+}
+
+.nav::-webkit-scrollbar {
+  display: none;
+}
+
+.nav-item {
+  padding: 8px 14px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  border-radius: var(--radius-pill);
+  font-size: 14px;
+  font-weight: 400;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.nav-item:hover {
+  color: var(--text);
+  background: var(--bg-soft);
+}
+
+.nav-item.active {
+  color: var(--text);
+  font-weight: 700;
+  background: var(--bg-soft);
+}
+
+.search {
+  display: flex;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.user :deep(.n-button) {
+  max-width: 120px;
+}
+
+.main {
+  padding: var(--space-5) var(--page-x) var(--space-7);
+}
+
+.main.immersive,
+.main.flush {
+  padding: 0;
+}
+
+@media (max-width: 980px) {
+  .topbar {
+    grid-template-columns: auto 1fr auto;
+    grid-template-rows: auto auto;
+    height: auto;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    row-gap: 10px;
+  }
+
+  .brand {
+    grid-column: 1;
+  }
+
+  .user {
+    grid-column: 3;
+    justify-self: end;
+  }
+
+  .nav {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .search {
+    grid-column: 1 / -1;
+    grid-row: 3;
+  }
+}
+</style>

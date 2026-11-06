@@ -1,0 +1,50 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String          @id @default(cuid())
+  username     String          @unique
+  passwordHash String
+  nickname     String?
+  avatar       String?
+  createdAt    DateTime        @default(now())
+  favorites    Favorite[]
+  progresses   WatchProgress[]
+}
+
+model Favorite {
+  id        String   @id @default(cuid())
+  userId    String
+  sourceKey String
+  vodId     String
+  title     String
+  cover     String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, sourceKey, vodId])
+  @@index([userId, createdAt])
+}
+
+model WatchProgress {
+  id            String   @id @default(cuid())
+  userId        String
+  sourceKey     String
+  vodId         String
+  episodeIndex  Int
+  positionSec   Float
+  durationSec   Float
+  title         String
+  cover         String?
+  updatedAt     DateTime @updatedAt
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, sourceKey, vodId])
+  @@index([userId, updatedAt])
+}
