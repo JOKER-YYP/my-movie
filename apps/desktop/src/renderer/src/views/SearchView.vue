@@ -1,18 +1,21 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { NSpin } from 'naive-ui'
 import MediaCard from '@/components/media/MediaCard.vue'
 import { searchVod } from '@/api/vod'
 import type { SearchFailure, VodSearchItem } from '@my-movie/shared'
 import { useSourcesStore } from '@/stores/sources'
 import { useSearchStore } from '@/stores/search'
+import { useSearchHistoryStore } from '@/stores/searchHistory'
 
 defineOptions({ name: 'SearchView' })
 
 const route = useRoute()
+const router = useRouter()
 const sourcesStore = useSourcesStore()
 const searchStore = useSearchStore()
+const searchHistory = useSearchHistoryStore()
 const loading = ref(false)
 const list = ref<VodSearchItem[]>([])
 const failures = ref<SearchFailure[]>([])
@@ -23,6 +26,11 @@ function applyCache(hit: NonNullable<ReturnType<typeof searchStore.get>>) {
   failures.value = hit.failures
 }
 
+function goHistory(item: string) {
+  searchHistory.add(item)
+  router.push({ path: '/search', query: { q: item } })
+}
+
 async function runSearch(force = false) {
   if (!q.value) {
     list.value = []
@@ -30,6 +38,7 @@ async function runSearch(force = false) {
     return
   }
 
+  searchHistory.add(q.value)
   await sourcesStore.load().catch(() => undefined)
   const enabled = sourcesStore.enabledKeys
 
@@ -87,6 +96,34 @@ watch(q, () => runSearch(false), { immediate: true })
       </button>
     </div>
 
+    <div v-if="searchHistory.items.length" class="recent">
+      <div class="recent-head">
+        <span>最近搜索</span>
+        <button type="button" class="clear-all" @click="searchHistory.clear()">清空</button>
+      </div>
+      <div class="chips">
+        <button
+          v-for="item in searchHistory.items"
+          :key="item"
+          type="button"
+          class="chip"
+          :class="{ active: item === q }"
+          @click="goHistory(item)"
+        >
+          <span>{{ item }}</span>
+          <span
+            class="chip-x"
+            role="button"
+            tabindex="-1"
+            aria-label="删除"
+            @click.stop="searchHistory.remove(item)"
+          >
+            ×
+          </span>
+        </button>
+      </div>
+    </div>
+
     <div v-if="failures.length" class="fail-bar" role="status">
       <span class="fail-label">部分源失败</span>
       <span
@@ -111,6 +148,7 @@ watch(q, () => runSearch(false), { immediate: true })
       <div v-else class="empty">
         <strong>{{ q ? '没有找到匹配的结果' : '请输入关键词开始搜索' }}</strong>
         <p v-if="q">可尝试其它关键词，或到设置中检查已启用的采集源</p>
+        <p v-else-if="searchHistory.items.length">点击上方最近搜索可快速再搜</p>
       </div>
     </NSpin>
   </div>
@@ -161,6 +199,91 @@ watch(q, () => runSearch(false), { immediate: true })
 .refresh:disabled {
   opacity: 0.5;
   cursor: default;
+}
+
+.recent {
+  margin-bottom: var(--space-4);
+}
+
+.recent-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-2);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.clear-all {
+  border: 0;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0;
+}
+
+.clear-all:hover {
+  color: var(--accent);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  border: 0;
+  background: var(--bg-soft);
+  color: var(--text-muted);
+  border-radius: var(--radius-pill);
+  padding: 6px 8px 6px 12px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.chip span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chip:hover,
+.chip.active {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+.chip.active {
+  box-shadow: 0 0 0 1px var(--accent);
+  color: var(--accent);
+}
+
+.chip-x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  color: var(--text-dim);
+  font-size: 13px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.chip-x:hover {
+  background: var(--bg-card);
+  color: var(--text);
 }
 
 .fail-bar {

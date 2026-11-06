@@ -4,13 +4,16 @@ import { useRoute, useRouter } from 'vue-router'
 import { NButton, NInput } from 'naive-ui'
 import { useUserStore } from '@/stores/user'
 import { useSourcesStore } from '@/stores/sources'
+import { useSearchHistoryStore } from '@/stores/searchHistory'
 import { CHANNELS } from '@/constants/channels'
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 const sourcesStore = useSourcesStore()
+const searchHistory = useSearchHistoryStore()
 const keyword = ref('')
+const searchFocused = ref(false)
 
 const hideChrome = computed(() => Boolean(route.meta.hideChrome))
 const flushMain = computed(() => route.name === 'home' || route.name === 'channel')
@@ -54,7 +57,22 @@ function goBack() {
 function onSearch() {
   const q = keyword.value.trim()
   if (!q) return
+  searchHistory.add(q)
+  searchFocused.value = false
   router.push({ path: '/search', query: { q } })
+}
+
+function pickHistory(q: string) {
+  keyword.value = q
+  searchHistory.add(q)
+  searchFocused.value = false
+  router.push({ path: '/search', query: { q } })
+}
+
+function onSearchBlur() {
+  window.setTimeout(() => {
+    searchFocused.value = false
+  }, 120)
 }
 </script>
 
@@ -84,13 +102,45 @@ function onSearch() {
         </RouterLink>
       </nav>
       <div class="search">
-        <NInput
-          v-model:value="keyword"
-          clearable
-          round
-          placeholder="搜索影片、演员、综艺…"
-          @keyup.enter="onSearch"
-        />
+        <div class="search-field">
+          <NInput
+            v-model:value="keyword"
+            clearable
+            round
+            placeholder="搜索影片、演员、综艺…"
+            @focus="searchFocused = true"
+            @blur="onSearchBlur"
+            @keyup.enter="onSearch"
+          />
+          <div
+            v-if="searchFocused && searchHistory.items.length"
+            class="history-pop"
+            @mousedown.prevent
+          >
+            <div class="history-head">
+              <span>最近搜索</span>
+              <button type="button" class="clear-all" @click="searchHistory.clear()">清空</button>
+            </div>
+            <button
+              v-for="item in searchHistory.items"
+              :key="item"
+              type="button"
+              class="history-item"
+              @click="pickHistory(item)"
+            >
+              <span class="history-text">{{ item }}</span>
+              <span
+                class="history-remove"
+                role="button"
+                tabindex="-1"
+                aria-label="删除"
+                @click.stop="searchHistory.remove(item)"
+              >
+                ×
+              </span>
+            </button>
+          </div>
+        </div>
         <NButton type="primary" class="search-btn" @click="onSearch">搜索</NButton>
       </div>
       <div class="user">
@@ -214,9 +264,98 @@ function onSearch() {
   align-items: center;
 }
 
-.search :deep(.n-input) {
+.search-field {
+  position: relative;
   flex: 1;
   min-width: 0;
+}
+
+.search-field :deep(.n-input) {
+  width: 100%;
+}
+
+.history-pop {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  z-index: 40;
+  padding: 10px;
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-heavy);
+  max-height: 280px;
+  overflow: auto;
+}
+
+.history-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  padding: 0 4px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.clear-all {
+  border: 0;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0;
+}
+
+.clear-all:hover {
+  color: var(--accent);
+}
+
+.history-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.history-item:hover {
+  background: var(--bg-soft);
+}
+
+.history-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history-remove {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: var(--text-dim);
+  font-size: 14px;
+  line-height: 1;
+}
+
+.history-remove:hover {
+  background: var(--bg-hover);
+  color: var(--text);
 }
 
 .search-btn {
