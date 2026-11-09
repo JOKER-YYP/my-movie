@@ -20,12 +20,13 @@ const loading = ref(true)
 const featured = ref<VodSearchItem | null>(null)
 const rails = ref<Record<string, VodSearchItem[]>>({})
 const continues = ref<ProgressRecord[]>([])
+const heroPicks = computed(() => (rails.value.hot || []).slice(0, 5))
 
 const heroStyle = computed(() => {
   const cover = featured.value?.cover
   return cover
     ? {
-        backgroundImage: `linear-gradient(90deg, var(--scrim-strong) 0%, var(--scrim-mid) 45%, var(--scrim-soft) 100%), url(${cover})`,
+        backgroundImage: `linear-gradient(90deg, var(--scrim-strong) 8%, var(--scrim-mid) 42%, transparent 72%), linear-gradient(0deg, var(--bg) 0%, transparent 38%), url(${cover})`,
       }
     : undefined
 })
@@ -93,6 +94,14 @@ function openFeatured() {
   router.push(`/media/${featured.value.sourceKey}/${featured.value.vodId}`)
 }
 
+function openItem(item: VodSearchItem) {
+  featured.value = item
+}
+
+function playItem(item: VodSearchItem) {
+  router.push(`/media/${item.sourceKey}/${item.vodId}`)
+}
+
 onMounted(bootstrap)
 </script>
 
@@ -100,7 +109,6 @@ onMounted(bootstrap)
   <div class="home">
     <section class="hero" :style="heroStyle">
       <div class="hero-inner">
-        <div class="brand-mark">my-movie</div>
         <h1>{{ featured?.title || '发现好内容' }}</h1>
         <p>
           {{
@@ -117,12 +125,27 @@ onMounted(bootstrap)
             :disabled="!featured"
             @click="openFeatured"
           >
-            立即观看
+            立即播放
           </NButton>
           <NButton class="cta-secondary" size="large" secondary @click="router.push('/search?q=热播')">
-            浏览更多
+            更多热播
           </NButton>
         </div>
+      </div>
+
+      <div v-if="heroPicks.length" class="hero-picks" aria-label="热播推荐">
+        <button
+          v-for="item in heroPicks"
+          :key="`${item.sourceKey}-${item.vodId}`"
+          type="button"
+          class="pick"
+          :class="{ active: featured?.vodId === item.vodId && featured?.sourceKey === item.sourceKey }"
+          :title="item.title"
+          @click="openItem(item)"
+          @dblclick="playItem(item)"
+        >
+          <img v-if="item.cover" :src="item.cover" :alt="item.title" loading="lazy" />
+        </button>
       </div>
     </section>
 
@@ -130,7 +153,7 @@ onMounted(bootstrap)
       <NSpin :show="loading">
         <ContinueRail :items="continues" />
         <MediaRail
-          title="今日热播"
+          title="重磅热播"
           subtitle="多源聚合，本地缓存加速"
           :items="rails.hot || []"
           more-to="/search?q=热播"
@@ -150,44 +173,42 @@ onMounted(bootstrap)
 
 <style scoped lang="scss">
 .home {
-  min-height: calc(100vh - var(--header-h));
+  min-height: 100vh;
 }
 
 .hero {
-  min-height: min(52vh, 420px);
-  display: flex;
-  align-items: flex-end;
+  position: relative;
+  min-height: min(62vh, 520px);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: var(--space-5);
+  padding: calc(var(--header-h) + 28px) var(--page-x) 36px;
   background: var(--hero-fallback);
   background-size: cover;
   background-position: center top;
 }
 
 .hero-inner {
-  width: min(640px, 100%);
-  padding: 48px var(--page-x) 40px;
-}
-
-.brand-mark {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--accent);
-  letter-spacing: 1.4px;
-  text-transform: uppercase;
+  width: min(560px, 100%);
+  padding-bottom: 8px;
 }
 
 h1 {
-  margin: 12px 0 8px;
-  font-size: clamp(24px, 3.2vw, 40px);
+  margin: 0 0 10px;
+  font-size: clamp(28px, 3.6vw, 44px);
   font-weight: 700;
-  max-width: 18ch;
+  max-width: 14ch;
+  line-height: 1.15;
+  text-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
 }
 
 p {
   margin: 0;
   max-width: 42ch;
-  color: var(--text-muted);
+  color: color-mix(in srgb, var(--text) 82%, transparent);
   font-size: 14px;
-  line-height: 1.5;
+  line-height: 1.55;
 }
 
 .cta {
@@ -204,7 +225,69 @@ p {
   font-weight: 700 !important;
 }
 
+.hero-picks {
+  display: flex;
+  align-items: end;
+  gap: 10px;
+  padding-bottom: 4px;
+  max-width: min(420px, 42vw);
+  overflow: auto;
+  scrollbar-width: none;
+}
+
+.hero-picks::-webkit-scrollbar {
+  display: none;
+}
+
+.pick {
+  flex: 0 0 68px;
+  width: 68px;
+  aspect-ratio: 2 / 3;
+  border: 0;
+  padding: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--bg-card);
+  cursor: pointer;
+  opacity: 0.72;
+  transform: scale(0.96);
+  transition: opacity 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: var(--shadow-soft);
+}
+
+.pick img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.pick:hover,
+.pick.active {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.pick.active {
+  box-shadow: 0 0 0 2px var(--text), var(--shadow-heavy);
+}
+
 .content {
-  padding: var(--space-5) var(--page-x) var(--space-7);
+  position: relative;
+  z-index: 1;
+  margin-top: -8px;
+  padding: var(--space-4) var(--page-x) var(--space-7);
+  background: linear-gradient(180deg, transparent, var(--bg) 24px);
+}
+
+@media (max-width: 980px) {
+  .hero {
+    grid-template-columns: 1fr;
+    min-height: min(54vh, 440px);
+  }
+
+  .hero-picks {
+    max-width: 100%;
+  }
 }
 </style>

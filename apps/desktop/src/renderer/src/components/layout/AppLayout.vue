@@ -8,6 +8,13 @@ import { useSourcesStore } from '@/stores/sources'
 import { useSearchHistoryStore } from '@/stores/searchHistory'
 import { CHANNELS } from '@/constants/channels'
 
+type NavItem = {
+  to: string
+  label: string
+  match: string
+  icon: 'home' | 'movie' | 'tv' | 'variety' | 'anime' | 'kids' | 'history' | 'fav' | 'settings'
+}
+
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
@@ -18,21 +25,34 @@ const searchFocused = ref(false)
 
 const hideChrome = computed(() => Boolean(route.meta.hideChrome))
 const flushMain = computed(() => route.name === 'home' || route.name === 'channel')
+const overlayHeader = computed(() => route.name === 'home' || route.name === 'channel')
 const showBack = computed(() => route.name === 'detail' || route.name === 'search')
 
-const navs = [
-  { to: '/', label: '首页', match: 'home' },
+const browseNavs: NavItem[] = [
+  { to: '/', label: '首页', match: 'home', icon: 'home' },
   ...CHANNELS.map((c) => ({
     to: `/channel/${c.key}`,
     label: c.label,
     match: c.key,
+    icon: (c.key === 'movie'
+      ? 'movie'
+      : c.key === 'tv'
+        ? 'tv'
+        : c.key === 'variety'
+          ? 'variety'
+          : c.key === 'anime'
+            ? 'anime'
+            : 'kids') as NavItem['icon'],
   })),
-  { to: '/history', label: '历史', match: 'history' },
-  { to: '/favorites', label: '收藏', match: 'favorites' },
-  { to: '/settings', label: '设置', match: 'settings' },
 ]
 
-function isActive(item: (typeof navs)[number]) {
+const libraryNavs: NavItem[] = [
+  { to: '/history', label: '历史', match: 'history', icon: 'history' },
+  { to: '/favorites', label: '收藏', match: 'favorites', icon: 'fav' },
+  { to: '/settings', label: '设置', match: 'settings', icon: 'settings' },
+]
+
+function isActive(item: NavItem) {
   if (item.match === 'home') return route.name === 'home'
   if (route.name === 'channel') return String(route.params.type) === item.match
   return route.name === item.match
@@ -78,101 +98,307 @@ function onSearchBlur() {
 </script>
 
 <template>
-  <div class="shell">
-    <!-- 无边框窗口：始终保留可拖拽标题区 + 窗口按钮 -->
-    <div v-if="hideChrome" class="titlebar titlebar-slim">
-      <div class="drag-fill" />
-      <WindowControls />
-    </div>
+  <div class="shell" :class="{ immersive: hideChrome }">
+    <aside v-if="!hideChrome" class="sidebar" aria-label="主导航">
+      <div class="sidebar-drag" />
+      <button type="button" class="logo no-drag" @click="router.push('/')">my-movie</button>
 
-    <header v-else class="topbar">
-      <div class="brand-row no-drag">
-        <button v-if="showBack" type="button" class="icon-btn" aria-label="返回" @click="goBack">
-          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-            <path
-              fill="currentColor"
-              d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"
-            />
-          </svg>
-        </button>
-        <button type="button" class="brand" @click="router.push('/')">my-movie</button>
-      </div>
-      <nav class="nav no-drag" aria-label="主导航">
-        <RouterLink
-          v-for="item in navs"
-          :key="item.to"
-          :to="item.to"
-          class="nav-item"
-          :class="{ active: isActive(item) }"
-        >
-          {{ item.label }}
-        </RouterLink>
-      </nav>
-      <div class="search no-drag">
-        <div class="search-field">
-          <NInput
-            v-model:value="keyword"
-            clearable
-            round
-            placeholder="搜索影片、演员、综艺…"
-            @focus="searchFocused = true"
-            @blur="onSearchBlur"
-            @keyup.enter="onSearch"
-          />
-          <div
-            v-if="searchFocused && searchHistory.items.length"
-            class="history-pop"
-            @mousedown.prevent
+      <nav class="side-nav no-drag">
+        <div class="nav-group">
+          <RouterLink
+            v-for="item in browseNavs"
+            :key="item.to"
+            :to="item.to"
+            class="side-item"
+            :class="{ active: isActive(item) }"
           >
-            <div class="history-head">
-              <span>最近搜索</span>
-              <button type="button" class="clear-all" @click="searchHistory.clear()">清空</button>
-            </div>
-            <button
-              v-for="item in searchHistory.items"
-              :key="item"
-              type="button"
-              class="history-item"
-              @click="pickHistory(item)"
-            >
-              <span class="history-text">{{ item }}</span>
-              <span
-                class="history-remove"
-                role="button"
-                tabindex="-1"
-                aria-label="删除"
-                @click.stop="searchHistory.remove(item)"
-              >
-                ×
-              </span>
-            </button>
-          </div>
+            <span class="ico" aria-hidden="true">
+              <svg v-if="item.icon === 'home'" viewBox="0 0 24 24" width="18" height="18">
+                <path
+                  fill="currentColor"
+                  d="M12 3.2 3.5 10.2V21h5.7v-6.2h5.6V21h5.7V10.2L12 3.2z"
+                />
+              </svg>
+              <svg v-else-if="item.icon === 'movie'" viewBox="0 0 24 24" width="18" height="18">
+                <path
+                  fill="currentColor"
+                  d="M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm2 2v2h2V7H6zm4 0v2h2V7h-2zm4 0v2h2V7h-2zm-8 4v2h2v-2H6zm4 0v2h2v-2h-2zm4 0v2h2v-2h-2zm-8 4v2h2v-2H6zm4 0v2h2v-2h-2zm4 0v2h2v-2h-2z"
+                />
+              </svg>
+              <svg v-else-if="item.icon === 'tv'" viewBox="0 0 24 24" width="18" height="18">
+                <path
+                  fill="currentColor"
+                  d="M4 6h16a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1zm4 13h8v1.5H8V19z"
+                />
+              </svg>
+              <svg v-else-if="item.icon === 'variety'" viewBox="0 0 24 24" width="18" height="18">
+                <path
+                  fill="currentColor"
+                  d="M12 3.5 14.2 9H20l-4.5 3.4L17.4 18 12 14.8 6.6 18l1.9-5.6L4 9h5.8L12 3.5z"
+                />
+              </svg>
+              <svg v-else-if="item.icon === 'anime'" viewBox="0 0 24 24" width="18" height="18">
+                <path
+                  fill="currentColor"
+                  d="M12 2a8 8 0 0 0-8 8c0 5.2 4.2 9.5 8 11.5 3.8-2 8-6.3 8-11.5a8 8 0 0 0-8-8zm0 4.2c1.8 0 3.3 1.5 3.3 3.3S13.8 12.8 12 12.8 8.7 11.3 8.7 9.5 10.2 6.2 12 6.2z"
+                />
+              </svg>
+              <svg v-else-if="item.icon === 'kids'" viewBox="0 0 24 24" width="18" height="18">
+                <path
+                  fill="currentColor"
+                  d="M12 4a4 4 0 1 1 0 8 4 4 0 0 1 0-8zm-7 15.2c0-3.2 3.1-5.2 7-5.2s7 2 7 5.2V20H5v-.8z"
+                />
+              </svg>
+            </span>
+            <span class="label">{{ item.label }}</span>
+          </RouterLink>
         </div>
-        <NButton type="primary" class="search-btn" @click="onSearch">搜索</NButton>
-      </div>
-      <div class="user no-drag">
-        <NButton v-if="userStore.user" quaternary @click="userStore.logout()">
-          {{ userStore.user.nickname || userStore.user.username }}
-        </NButton>
-        <NButton v-else quaternary @click="router.push('/login')">登录</NButton>
-      </div>
-      <WindowControls />
-    </header>
 
-    <main class="main" :class="{ immersive: hideChrome, flush: flushMain }">
-      <RouterView v-slot="{ Component, route: r }">
-        <KeepAlive include="SearchView">
-          <component :is="Component" :key="r.name === 'search' ? 'search' : r.fullPath" />
-        </KeepAlive>
-      </RouterView>
-    </main>
+        <div class="nav-divider" />
+
+        <div class="nav-group">
+          <RouterLink
+            v-for="item in libraryNavs"
+            :key="item.to"
+            :to="item.to"
+            class="side-item"
+            :class="{ active: isActive(item) }"
+          >
+            <span class="ico" aria-hidden="true">
+              <svg v-if="item.icon === 'history'" viewBox="0 0 24 24" width="18" height="18">
+                <path
+                  fill="currentColor"
+                  d="M12 4a8 8 0 1 1-7.4 4.9l1.8.6A6.2 6.2 0 1 0 12 5.8V8l3.5-3.5L12 1v3zM11 8h1.5v4.2l3.2 1.9-.7 1.2L11 13V8z"
+                />
+              </svg>
+              <svg v-else-if="item.icon === 'fav'" viewBox="0 0 24 24" width="18" height="18">
+                <path
+                  fill="currentColor"
+                  d="M12 19.3 5.4 13.2A4.4 4.4 0 0 1 12 6.8a4.4 4.4 0 0 1 6.6 6.4L12 19.3z"
+                />
+              </svg>
+              <svg v-else viewBox="0 0 24 24" width="18" height="18">
+                <path
+                  fill="currentColor"
+                  d="M11 4h2v2.1a6.9 6.9 0 0 1 2.3.9l1.5-1.5 1.4 1.4-1.5 1.5c.4.7.7 1.5.9 2.3H21v2h-2.1a6.9 6.9 0 0 1-.9 2.3l1.5 1.5-1.4 1.4-1.5-1.5a6.9 6.9 0 0 1-2.3.9V20h-2v-2.1a6.9 6.9 0 0 1-2.3-.9l-1.5 1.5-1.4-1.4 1.5-1.5a6.9 6.9 0 0 1-.9-2.3H3v-2h2.1c.2-.8.5-1.6.9-2.3L4.5 7.9 5.9 6.5l1.5 1.5A6.9 6.9 0 0 1 11 6.1V4zm1 5.5A2.5 2.5 0 1 0 12 14a2.5 2.5 0 0 0 0-4.5z"
+                />
+              </svg>
+            </span>
+            <span class="label">{{ item.label }}</span>
+          </RouterLink>
+        </div>
+      </nav>
+    </aside>
+
+    <div class="stage">
+      <div v-if="hideChrome" class="titlebar titlebar-slim">
+        <div class="drag-fill" />
+        <WindowControls />
+      </div>
+
+      <header
+        v-else
+        class="topbar"
+        :class="{ overlay: overlayHeader }"
+      >
+        <div class="top-left no-drag">
+          <button v-if="showBack" type="button" class="icon-btn" aria-label="返回" @click="goBack">
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+              <path
+                fill="currentColor"
+                d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"
+              />
+            </svg>
+          </button>
+        </div>
+
+        <div class="search no-drag">
+          <div class="search-field">
+            <span class="search-ico" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="16" height="16">
+                <path
+                  fill="currentColor"
+                  d="M10.5 3.5a7 7 0 1 1 0 14 7 7 0 0 1 0-14zm0 2a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm7.4 10.3 3.4 3.4-1.4 1.4-3.4-3.4 1.4-1.4z"
+                />
+              </svg>
+            </span>
+            <NInput
+              v-model:value="keyword"
+              clearable
+              round
+              placeholder="搜索影片、演员、综艺…"
+              @focus="searchFocused = true"
+              @blur="onSearchBlur"
+              @keyup.enter="onSearch"
+            />
+            <div
+              v-if="searchFocused && searchHistory.items.length"
+              class="history-pop"
+              @mousedown.prevent
+            >
+              <div class="history-head">
+                <span>最近搜索</span>
+                <button type="button" class="clear-all" @click="searchHistory.clear()">清空</button>
+              </div>
+              <button
+                v-for="item in searchHistory.items"
+                :key="item"
+                type="button"
+                class="history-item"
+                @click="pickHistory(item)"
+              >
+                <span class="history-text">{{ item }}</span>
+                <span
+                  class="history-remove"
+                  role="button"
+                  tabindex="-1"
+                  aria-label="删除"
+                  @click.stop="searchHistory.remove(item)"
+                >
+                  ×
+                </span>
+              </button>
+            </div>
+          </div>
+          <NButton type="primary" class="search-btn" @click="onSearch">搜索</NButton>
+        </div>
+
+        <div class="top-right no-drag">
+          <NButton quaternary class="ghost" @click="router.push('/history')">历史</NButton>
+          <NButton v-if="userStore.user" quaternary @click="userStore.logout()">
+            {{ userStore.user.nickname || userStore.user.username }}
+          </NButton>
+          <NButton v-else quaternary @click="router.push('/login')">登录</NButton>
+        </div>
+        <WindowControls />
+      </header>
+
+      <main class="main" :class="{ immersive: hideChrome, flush: flushMain }">
+        <RouterView v-slot="{ Component, route: r }">
+          <KeepAlive include="SearchView">
+            <component :is="Component" :key="r.name === 'search' ? 'search' : r.fullPath" />
+          </KeepAlive>
+        </RouterView>
+      </main>
+    </div>
   </div>
 </template>
 
 <style scoped lang="scss">
 .shell {
   min-height: 100vh;
+  display: grid;
+  grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
   background: var(--bg);
+}
+
+.shell.immersive {
+  grid-template-columns: 1fr;
+}
+
+.sidebar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: color-mix(in srgb, var(--bg) 88%, #000);
+  border-right: 1px solid color-mix(in srgb, var(--line) 28%, transparent);
+  -webkit-app-region: drag;
+}
+
+.sidebar-drag {
+  height: 12px;
+  flex-shrink: 0;
+}
+
+.no-drag {
+  -webkit-app-region: no-drag;
+}
+
+.logo {
+  margin: 4px 14px 18px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.side-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 10px 20px;
+  overflow: auto;
+  min-height: 0;
+}
+
+.nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nav-divider {
+  height: 1px;
+  margin: 8px 8px;
+  background: color-mix(in srgb, var(--line) 45%, transparent);
+}
+
+.side-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: 10px;
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 400;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.side-item:hover {
+  color: var(--text);
+  background: var(--bg-soft);
+}
+
+.side-item.active {
+  color: var(--text);
+  font-weight: 700;
+  background: var(--accent-soft);
+}
+
+.side-item.active .ico {
+  color: var(--accent);
+}
+
+.ico {
+  display: inline-flex;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: inherit;
+}
+
+.label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stage {
+  position: relative;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
 }
 
 .titlebar,
@@ -181,14 +407,7 @@ function onSearchBlur() {
   user-select: none;
 }
 
-.no-drag {
-  -webkit-app-region: no-drag;
-}
-
 .titlebar-slim {
-  position: sticky;
-  top: 0;
-  z-index: 30;
   height: 36px;
   display: flex;
   align-items: stretch;
@@ -198,7 +417,6 @@ function onSearchBlur() {
 
 .drag-fill {
   flex: 1;
-  min-width: 0;
 }
 
 .topbar {
@@ -207,101 +425,43 @@ function onSearchBlur() {
   z-index: 20;
   height: var(--header-h);
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) minmax(200px, 320px) auto auto;
+  grid-template-columns: auto minmax(220px, 480px) auto auto;
   gap: var(--space-3);
   align-items: stretch;
-  padding: 0 0 0 var(--page-x);
-  background: color-mix(in srgb, var(--bg) 92%, transparent);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid color-mix(in srgb, var(--line) 35%, transparent);
+  justify-content: end;
+  padding-left: var(--page-x);
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 28%, transparent);
 }
 
-.brand-row,
-.nav,
-.search,
-.user {
+.topbar.overlay {
+  position: absolute;
+  left: 0;
+  right: 0;
+  background: linear-gradient(180deg, var(--scrim-mid), transparent);
+  border-bottom: 0;
+  backdrop-filter: blur(8px);
+}
+
+.top-left,
+.top-right,
+.search {
   display: flex;
   align-items: center;
   align-self: center;
 }
 
-.brand-row {
-  gap: var(--space-2);
-  min-width: 0;
-}
-
-.icon-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border: 0;
-  border-radius: 50%;
-  background: var(--bg-soft);
-  color: var(--text);
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
-}
-
-.icon-btn:hover {
-  background: var(--bg-hover);
-  color: var(--accent);
-  transform: scale(1.04);
-}
-
-.brand {
-  border: 0;
-  background: transparent;
-  padding: 0;
-  font-family: var(--font-display);
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--accent);
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.brand:hover {
-  filter: brightness(1.08);
-}
-
-.nav {
-  gap: 2px;
-  overflow: auto;
-  scrollbar-width: none;
-  min-width: 0;
-}
-
-.nav::-webkit-scrollbar {
-  display: none;
-}
-
-.nav-item {
-  padding: 8px 14px;
-  color: var(--text-muted);
-  white-space: nowrap;
-  border-radius: var(--radius-pill);
-  font-size: 14px;
-  font-weight: 400;
-  transition: color 0.15s ease, background 0.15s ease;
-}
-
-.nav-item:hover {
-  color: var(--text);
-  background: var(--bg-soft);
-}
-
-.nav-item.active {
-  color: var(--text);
-  font-weight: 700;
-  background: var(--bg-soft);
+.top-left {
+  justify-self: start;
+  min-width: 36px;
 }
 
 .search {
+  justify-self: center;
   gap: var(--space-2);
-  min-width: 0;
+  width: 100%;
+  max-width: 480px;
 }
 
 .search-field {
@@ -310,8 +470,22 @@ function onSearchBlur() {
   min-width: 0;
 }
 
+.search-ico {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  z-index: 2;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
 .search-field :deep(.n-input) {
   width: 100%;
+}
+
+.search-field :deep(.n-input .n-input__input-el) {
+  padding-left: 28px;
 }
 
 .history-pop {
@@ -338,7 +512,6 @@ function onSearchBlur() {
   color: var(--text-muted);
   font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.04em;
 }
 
 .clear-all {
@@ -347,7 +520,6 @@ function onSearchBlur() {
   color: var(--text-dim);
   cursor: pointer;
   font-size: 12px;
-  padding: 0;
 }
 
 .clear-all:hover {
@@ -382,7 +554,6 @@ function onSearchBlur() {
 }
 
 .history-remove {
-  flex-shrink: 0;
   width: 20px;
   height: 20px;
   display: inline-flex;
@@ -390,8 +561,6 @@ function onSearchBlur() {
   justify-content: center;
   border-radius: 50%;
   color: var(--text-dim);
-  font-size: 14px;
-  line-height: 1;
 }
 
 .history-remove:hover {
@@ -406,11 +575,36 @@ function onSearchBlur() {
   flex-shrink: 0;
 }
 
-.user :deep(.n-button) {
+.top-right {
+  gap: 4px;
+  justify-self: end;
+}
+
+.top-right :deep(.n-button) {
   max-width: 120px;
 }
 
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--bg-soft);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.icon-btn:hover {
+  background: var(--bg-hover);
+  color: var(--accent);
+}
+
 .main {
+  flex: 1;
+  min-width: 0;
   padding: var(--space-5) var(--page-x) var(--space-7);
 }
 
@@ -419,41 +613,39 @@ function onSearchBlur() {
   padding: 0;
 }
 
+.main.flush {
+  padding-top: 0;
+}
+
 @media (max-width: 980px) {
+  .shell {
+    grid-template-columns: 72px minmax(0, 1fr);
+  }
+
+  .logo {
+    font-size: 0;
+    width: 40px;
+    height: 28px;
+    margin: 8px auto 12px;
+    background: var(--accent);
+    border-radius: 8px;
+  }
+
+  .side-item {
+    justify-content: center;
+    padding: 0;
+  }
+
+  .label {
+    display: none;
+  }
+
   .topbar {
-    grid-template-columns: auto 1fr auto;
-    grid-template-rows: auto auto auto;
-    height: auto;
-    min-height: var(--header-h);
-    padding-top: 6px;
-    padding-bottom: 10px;
-    row-gap: 10px;
-  }
-
-  .brand-row {
-    grid-column: 1;
-  }
-
-  .user {
-    grid-column: 2;
-    justify-self: end;
-  }
-
-  .topbar > :deep(.controls),
-  .topbar > :last-child {
-    grid-column: 3;
-    grid-row: 1;
-  }
-
-  .nav {
-    grid-column: 1 / -1;
-    grid-row: 2;
+    grid-template-columns: auto 1fr auto auto;
   }
 
   .search {
-    grid-column: 1 / -1;
-    grid-row: 3;
-    padding-right: var(--page-x);
+    max-width: none;
   }
 }
 </style>

@@ -66,23 +66,11 @@ watch(
       :style="
         banner?.cover
           ? {
-              backgroundImage: `linear-gradient(90deg, var(--scrim-strong), var(--scrim-soft)), url(${banner.cover})`,
+              backgroundImage: `linear-gradient(90deg, var(--scrim-strong) 10%, var(--scrim-soft) 55%, transparent), linear-gradient(0deg, var(--bg), transparent 40%), url(${banner.cover})`,
             }
           : undefined
       "
     >
-      <div class="tabs">
-        <button
-          v-for="c in CHANNELS"
-          :key="c.key"
-          type="button"
-          class="tab"
-          :class="{ active: c.key === channel.key }"
-          @click="router.push(`/channel/${c.key}`)"
-        >
-          {{ c.label }}
-        </button>
-      </div>
       <h1>{{ channel.label }}</h1>
       <p>{{ channel.blurb }}</p>
       <button
@@ -106,54 +94,26 @@ watch(
 
 <style scoped lang="scss">
 .channel {
-  min-height: calc(100vh - var(--header-h));
+  min-height: 100vh;
 }
 
 .banner {
-  min-height: 260px;
-  padding: 24px var(--page-x) 32px;
+  min-height: min(42vh, 340px);
+  padding: calc(var(--header-h) + 28px) var(--page-x) 36px;
   background: var(--banner-fallback);
   background-size: cover;
   background-position: center;
 }
 
-.tabs {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-bottom: 28px;
-}
-
-.tab {
-  border: 0;
-  background: transparent;
-  color: var(--text-muted);
-  padding: 8px 14px;
-  cursor: pointer;
-  border-radius: var(--radius-pill);
-  font-size: 14px;
-  font-weight: 400;
-}
-
-.tab:hover {
-  color: var(--text);
-  background: var(--bg-soft);
-}
-
-.tab.active {
-  color: var(--text);
-  font-weight: 700;
-  background: var(--bg-soft);
-}
-
 h1 {
   margin: 0;
-  font-size: 24px;
+  font-size: clamp(26px, 3vw, 36px);
 }
 
 p {
   margin: 10px 0 0;
   color: var(--text-muted);
+  max-width: 48ch;
 }
 
 .watch {
@@ -168,16 +128,14 @@ p {
   letter-spacing: 1.4px;
   text-transform: uppercase;
   cursor: pointer;
-  max-width: 100%;
+  max-width: min(420px, 100%);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  transition: transform 0.15s ease, filter 0.15s ease;
 }
 
 .watch:hover {
   filter: brightness(1.06);
-  transform: scale(1.02);
 }
 
 .grid {
