@@ -1,25 +1,59 @@
 import { API_PATHS, type SearchResponse, type VodDetail, type VodSource } from '@my-movie/shared'
 import { apiGet, apiPost } from './http'
+import { cachedSearch, makeSearchCacheKey } from '@/utils/vodSearchCache'
 
 export function fetchSources() {
   return apiGet<VodSource[]>(API_PATHS.vodSources)
 }
 
-export function searchVod(wd: string, sources?: string[]) {
-  // 对齐 LibreTV classic：默认不做黄滤（站点 yellowFilterEnabled 默认关闭）
-  return apiPost<SearchResponse>(
-    API_PATHS.vodSearch,
-    {
-      wd,
-      sources,
-      filterAdult: false,
-    },
-    { timeout: 90000 },
+export type SearchVodOptions = {
+  sources?: string[]
+  filterAdult?: boolean
+  /** 首页/频道用 1，完整搜索可不传 */
+  maxPages?: number
+  /** 强制绕过缓存 */
+  force?: boolean
+}
+
+export function searchVod(wd: string, sourcesOrOpts?: string[] | SearchVodOptions, maybeOpts?: SearchVodOptions) {
+  const opts: SearchVodOptions = Array.isArray(sourcesOrOpts)
+    ? { ...(maybeOpts || {}), sources: sourcesOrOpts }
+    : { ...(sourcesOrOpts || {}) }
+
+  const key = makeSearchCacheKey(wd, opts.sources, {
+    filterAdult: opts.filterAdult,
+    maxPages: opts.maxPages,
+  })
+
+  return cachedSearch(
+    key,
+    () =>
+      apiPost<SearchResponse>(
+        API_PATHS.vodSearch,
+        {
+          wd,
+          sources: opts.sources,
+          filterAdult: opts.filterAdult ?? false,
+          maxPages: opts.maxPages,
+        },
+        { timeout: 90000 },
+      ),
+    { force: opts.force },
   )
 }
 
-export function fetchDetail(source: string, id: string) {
-  return apiGet<VodDetail>(API_PATHS.vodDetail, { source, id })
+const detailMemory = new Map<string, { data: VodDetail; at: number }>()
+const DETAIL_FRESH_MS = 30 * 60 * 1000
+
+export async function fetchDetail(source: string, id: string, force = false) {
+  const key = `${source}:${id}`
+  if (!force) {
+    const hit = detailMemory.get(key)
+    if (hit && Date.now() - hit.at < DETAIL_FRESH_MS) return hit.data
+  }
+  const data = await apiGet<VodDetail>(API_PATHS.vodDetail, { source, id })
+  detailMemory.set(key, { data, at: Date.now() })
+  return data
 }
 
 export function proxyUrl(url: string) {

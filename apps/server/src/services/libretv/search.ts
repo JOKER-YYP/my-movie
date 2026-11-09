@@ -7,6 +7,7 @@ import {
   type CmsListResponse,
 } from './cms.js'
 import { getSource, listSources } from './sources.js'
+import { TtlCache } from '../../utils/ttlCache.js'
 
 /** 对齐 LibreTV classic：search.js 单源超时 15s */
 function timeoutMs(): number {
@@ -15,11 +16,18 @@ function timeoutMs(): number {
 }
 
 /** 对齐 LibreTV classic：API_CONFIG.search.maxPages = 50 */
-function maxPages(): number {
+function defaultMaxPages(): number {
   const n = Number(process.env.SEARCH_MAX_PAGES || 50)
   if (!Number.isFinite(n)) return 50
   return Math.min(50, Math.max(1, Math.floor(n)))
 }
+
+function searchCacheTtlMs(): number {
+  const n = Number(process.env.SEARCH_CACHE_TTL_MS || 10 * 60 * 1000)
+  return Number.isFinite(n) && n > 0 ? n : 10 * 60 * 1000
+}
+
+const searchCache = new TtlCache<SearchResponse>(10 * 60 * 1000, 300)
 
 function mapList(data: CmsListResponse, source: ReturnType<typeof getSource>): VodSearchItem[] {
   if (!source) return []
@@ -34,6 +42,7 @@ function mapList(data: CmsListResponse, source: ReturnType<typeof getSource>): V
 async function searchOne(
   sourceKey: string,
   wd: string,
+  pagesLimitOverride: number,
 ): Promise<{ list: VodSearchItem[]; failure?: SearchFailure }> {
   const source = getSource(sourceKey)
   if (!source) {
@@ -44,7 +53,7 @@ async function searchOne(
   }
 
   const ms = timeoutMs()
-  const pagesLimit = maxPages()
+  const pagesLimit = Math.min(50, Math.max(1, Math.floor(pagesLimitOverride)))
 
   try {
     const first = (await fetchCmsJson(buildSearchUrl(source, wd, 1), ms)) as CmsListResponse
@@ -83,6 +92,8 @@ export async function aggregateSearch(options: {
   wd: string
   sources?: string[]
   filterAdult?: boolean
+  /** 单源最多翻页；首页/频道建议传 1 */
+  maxPages?: number
 }): Promise<SearchResponse> {
   const wd = options.wd.trim()
   if (!wd) return { list: [], failures: [] }
@@ -92,13 +103,21 @@ export async function aggregateSearch(options: {
       ? options.sources
       : listSources(false).map((s) => s.key)
 
-  const settled = await Promise.all(keys.map((key) => searchOne(key, wd)))
-  const failures = settled.map((s) => s.failure).filter((f): f is SearchFailure => Boolean(f))
-  const seen = new Set<string>()
-  const list: VodSearchItem[] = []
+  const pagesLimit =
+    options.maxPages != null && Number.isFinite(options.maxPages)
+      ? Math.min(50, Math.max(1, Math.floor(options.maxPages)))
+      : defaultMaxPages()
 
   // LibreTV classic：黄滤默认关闭（localStorage yellowFilterEnabled === 'true' 才开）
   const filterAdult = options.filterAdult === true
+  const cacheKey = `search:${wd}::${[...keys].sort().join(',')}::${filterAdult ? 1 : 0}::p${pagesLimit}`
+  const cached = searchCache.get(cacheKey)
+  if (cached) return cached
+
+  const settled = await Promise.all(keys.map((key) => searchOne(key, wd, pagesLimit)))
+  const failures = settled.map((s) => s.failure).filter((f): f is SearchFailure => Boolean(f))
+  const seen = new Set<string>()
+  const list: VodSearchItem[] = []
 
   for (const s of settled) {
     for (const item of s.list) {
@@ -117,5 +136,7 @@ export async function aggregateSearch(options: {
     return a.sourceName.localeCompare(b.sourceName, 'zh-CN')
   })
 
-  return { list, failures }
+  const result = { list, failures }
+  searchCache.set(cacheKey, result, searchCacheTtlMs())
+  return result
 }

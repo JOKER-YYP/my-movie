@@ -41,6 +41,8 @@ pnpm dev:desktop
 - `LIBRETV_PROXY_MODE=direct`：服务端直连 CMS
 - `SEARCH_SOURCE_TIMEOUT_MS`：单源超时，默认 `15000`（对齐 LibreTV）
 - `SEARCH_MAX_PAGES`：单源最多翻页数，默认 `50`（对齐 LibreTV classic）
+- `SEARCH_CACHE_TTL_MS`：搜索服务端缓存，默认 `600000`（10 分钟）
+- `DETAIL_CACHE_TTL_MS`：详情服务端缓存，默认 `1800000`（30 分钟）
 
 ## 目录
 

@@ -16,6 +16,7 @@ const searchSchema = z.object({
   wd: z.string().min(1).max(100),
   sources: z.array(z.string()).optional(),
   filterAdult: z.boolean().optional(),
+  maxPages: z.number().int().min(1).max(50).optional(),
 })
 
 vodRouter.post('/search', async (req, res) => {

@@ -7,6 +7,7 @@ import { searchVod } from '@/api/vod'
 import type { VodSearchItem } from '@my-movie/shared'
 import { CHANNELS, channelByKey } from '@/constants/channels'
 import { useSourcesStore } from '@/stores/sources'
+import { makeSearchCacheKey, peekSearchCache } from '@/utils/vodSearchCache'
 
 const route = useRoute()
 const router = useRouter()
@@ -18,16 +19,34 @@ const banner = ref<VodSearchItem | null>(null)
 
 const channel = computed(() => channelByKey(String(route.params.type || '')) || CHANNELS[0])
 
+function applyList(items: VodSearchItem[]) {
+  banner.value = items[0] || null
+  list.value = items.slice(1)
+}
+
 async function load() {
-  loading.value = true
   try {
     await sourcesStore.load()
-    const res = await searchVod(channel.value.query, sourcesStore.enabledKeys.slice(0, 6))
-    banner.value = res.list[0] || null
-    list.value = res.list.slice(1)
+    const sourceKeys = sourcesStore.enabledKeys.slice(0, 6)
+    const cacheKey = makeSearchCacheKey(channel.value.query, sourceKeys, { maxPages: 1 })
+    const hit = peekSearchCache(cacheKey)
+    if (hit) {
+      applyList(hit.data.list)
+      loading.value = false
+    } else {
+      loading.value = true
+    }
+
+    const res = await searchVod(channel.value.query, {
+      sources: sourceKeys,
+      maxPages: 1,
+    })
+    applyList(res.list)
   } catch {
-    banner.value = null
-    list.value = []
+    if (!list.value.length) {
+      banner.value = null
+      list.value = []
+    }
   } finally {
     loading.value = false
   }

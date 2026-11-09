@@ -6,25 +6,19 @@ import MediaCard from '@/components/media/MediaCard.vue'
 import { searchVod } from '@/api/vod'
 import type { SearchFailure, VodSearchItem } from '@my-movie/shared'
 import { useSourcesStore } from '@/stores/sources'
-import { useSearchStore } from '@/stores/search'
 import { useSearchHistoryStore } from '@/stores/searchHistory'
+import { makeSearchCacheKey, peekSearchCache } from '@/utils/vodSearchCache'
 
 defineOptions({ name: 'SearchView' })
 
 const route = useRoute()
 const router = useRouter()
 const sourcesStore = useSourcesStore()
-const searchStore = useSearchStore()
 const searchHistory = useSearchHistoryStore()
 const loading = ref(false)
 const list = ref<VodSearchItem[]>([])
 const failures = ref<SearchFailure[]>([])
 const q = computed(() => String(route.query.q || '').trim())
-
-function applyCache(hit: NonNullable<ReturnType<typeof searchStore.get>>) {
-  list.value = hit.list
-  failures.value = hit.failures
-}
 
 function goHistory(item: string) {
   searchHistory.add(item)
@@ -43,18 +37,22 @@ async function runSearch(force = false) {
   const enabled = sourcesStore.enabledKeys
 
   if (!force) {
-    const hit = searchStore.get(q.value, enabled)
+    const hit = peekSearchCache(makeSearchCacheKey(q.value, enabled))
     if (hit) {
-      applyCache(hit)
+      list.value = hit.data.list
+      failures.value = hit.data.failures
       loading.value = false
-      return
+      if (hit.fresh) return
+    } else {
+      loading.value = true
     }
+  } else {
+    loading.value = true
   }
 
-  loading.value = true
   failures.value = []
   try {
-    const cmsRes = await searchVod(q.value, enabled).then(
+    const cmsRes = await searchVod(q.value, { sources: enabled, force }).then(
       (value) => ({ status: 'fulfilled' as const, value }),
       (reason) => ({ status: 'rejected' as const, reason }),
     )
@@ -69,13 +67,6 @@ async function runSearch(force = false) {
         error: cmsRes.reason instanceof Error ? cmsRes.reason.message : '失败',
       })
     }
-
-    searchStore.set({
-      q: q.value,
-      enabledKeys: enabled,
-      list: list.value,
-      failures: failures.value,
-    })
   } finally {
     loading.value = false
   }

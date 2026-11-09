@@ -10,6 +10,7 @@ import { useSourcesStore } from '@/stores/sources'
 import { useUserStore } from '@/stores/user'
 import { CHANNELS } from '@/constants/channels'
 import { listHistory, type ProgressRecord } from '@/utils/progress'
+import { makeSearchCacheKey, peekSearchCache } from '@/utils/vodSearchCache'
 
 const router = useRouter()
 const sourcesStore = useSourcesStore()
@@ -29,28 +30,59 @@ const heroStyle = computed(() => {
     : undefined
 })
 
-async function loadRail(query: string, take = 14) {
-  const res = await searchVod(query, sourcesStore.enabledKeys.slice(0, 5))
+function applyHot(list: VodSearchItem[]) {
+  featured.value = list[0] || null
+  rails.value = {
+    ...rails.value,
+    hot: list.slice(1),
+  }
+}
+
+function hydrateFromCache(sourceKeys: string[]) {
+  const hotKey = makeSearchCacheKey('热播', sourceKeys, { maxPages: 1 })
+  const hotHit = peekSearchCache(hotKey)
+  if (hotHit) applyHot(hotHit.data.list.slice(0, 16))
+
+  const next = { ...rails.value }
+  for (const ch of CHANNELS) {
+    const key = makeSearchCacheKey(ch.query, sourceKeys, { maxPages: 1 })
+    const hit = peekSearchCache(key)
+    if (hit) next[ch.key] = hit.data.list.slice(0, 12)
+  }
+  rails.value = next
+  return Boolean(hotHit || Object.keys(next).some((k) => k !== 'hot' && (next[k]?.length || 0) > 0))
+}
+
+async function loadRail(query: string, sourceKeys: string[], take = 14) {
+  const res = await searchVod(query, {
+    sources: sourceKeys,
+    maxPages: 1,
+  })
   return res.list.slice(0, take)
 }
 
 async function bootstrap() {
-  loading.value = true
   try {
     await sourcesStore.load()
+    const sourceKeys = sourcesStore.enabledKeys.slice(0, 5)
+    const hadCache = hydrateFromCache(sourceKeys)
+    loading.value = !hadCache
+
     const [hot, ...channelLists] = await Promise.all([
-      loadRail('热播', 16),
-      ...CHANNELS.map((c) => loadRail(c.query, 12)),
+      loadRail('热播', sourceKeys, 16),
+      ...CHANNELS.map((c) => loadRail(c.query, sourceKeys, 12)),
     ])
-    featured.value = hot[0] || null
+    applyHot(hot)
     rails.value = {
       hot: hot.slice(1),
       ...Object.fromEntries(CHANNELS.map((c, i) => [c.key, channelLists[i] || []])),
     }
     continues.value = await listHistory(userStore.token || undefined, 12)
   } catch {
-    featured.value = null
-    rails.value = {}
+    if (!featured.value) {
+      featured.value = null
+      rails.value = {}
+    }
   } finally {
     loading.value = false
   }
@@ -99,7 +131,7 @@ onMounted(bootstrap)
         <ContinueRail :items="continues" />
         <MediaRail
           title="今日热播"
-          subtitle="多源聚合，实时刷新"
+          subtitle="多源聚合，本地缓存加速"
           :items="rails.hot || []"
           more-to="/search?q=热播"
         />
