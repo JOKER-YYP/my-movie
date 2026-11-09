@@ -233,10 +233,13 @@ p {
   max-width: min(420px, 42vw);
   overflow: auto;
   scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 .hero-picks::-webkit-scrollbar {
   display: none;
+  width: 0;
+  height: 0;
 }
 
 .pick {

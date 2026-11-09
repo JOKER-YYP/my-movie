@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { NButton, NInput } from 'naive-ui'
+import { NButton } from 'naive-ui'
 import WindowControls from '@/components/layout/WindowControls.vue'
 import { useUserStore } from '@/stores/user'
 import { useSourcesStore } from '@/stores/sources'
@@ -213,7 +213,7 @@ function onSearchBlur() {
         </div>
 
         <div class="search no-drag">
-          <div class="search-field">
+          <div class="search-pill" :class="{ focused: searchFocused }">
             <span class="search-ico" aria-hidden="true">
               <svg viewBox="0 0 24 24" width="16" height="16">
                 <path
@@ -222,15 +222,27 @@ function onSearchBlur() {
                 />
               </svg>
             </span>
-            <NInput
-              v-model:value="keyword"
-              clearable
-              round
+            <input
+              v-model="keyword"
+              class="search-input"
+              type="search"
+              enterkeyhint="search"
               placeholder="搜索影片、演员、综艺…"
               @focus="searchFocused = true"
               @blur="onSearchBlur"
               @keyup.enter="onSearch"
             />
+            <button
+              v-if="keyword"
+              type="button"
+              class="clear-btn"
+              aria-label="清空"
+              @mousedown.prevent
+              @click="keyword = ''"
+            >
+              ×
+            </button>
+            <button type="button" class="search-go" @click="onSearch">搜索</button>
             <div
               v-if="searchFocused && searchHistory.items.length"
               class="history-pop"
@@ -260,7 +272,6 @@ function onSearchBlur() {
               </button>
             </div>
           </div>
-          <NButton type="primary" class="search-btn" @click="onSearch">搜索</NButton>
         </div>
 
         <div class="top-right no-drag">
@@ -459,33 +470,96 @@ function onSearchBlur() {
 
 .search {
   justify-self: center;
-  gap: var(--space-2);
   width: 100%;
-  max-width: 480px;
+  max-width: 460px;
 }
 
-.search-field {
+.search-pill {
   position: relative;
-  flex: 1;
-  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 40px;
+  padding: 0 6px 0 14px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.topbar:not(.overlay) .search-pill {
+  background: var(--bg-soft);
+  border-color: color-mix(in srgb, var(--line) 55%, transparent);
+}
+
+.search-pill.focused {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
 }
 
 .search-ico {
-  position: absolute;
-  left: 14px;
-  top: 50%;
-  z-index: 2;
-  transform: translateY(-50%);
+  display: inline-flex;
+  flex-shrink: 0;
   color: var(--text-muted);
   pointer-events: none;
 }
 
-.search-field :deep(.n-input) {
-  width: 100%;
+.search-input {
+  flex: 1;
+  min-width: 0;
+  height: 36px;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  caret-color: var(--accent);
 }
 
-.search-field :deep(.n-input .n-input__input-el) {
-  padding-left: 28px;
+.search-input::placeholder {
+  color: var(--text-muted);
+}
+
+.search-input::-webkit-search-decoration,
+.search-input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.clear-btn {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16);
+  color: var(--text);
+  cursor: pointer;
+  line-height: 1;
+}
+
+.clear-btn:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.search-go {
+  flex-shrink: 0;
+  height: 30px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.search-go:hover {
+  color: var(--accent);
 }
 
 .history-pop {
@@ -566,13 +640,6 @@ function onSearchBlur() {
 .history-remove:hover {
   background: var(--bg-hover);
   color: var(--text);
-}
-
-.search-btn {
-  letter-spacing: 1.4px;
-  text-transform: uppercase;
-  font-weight: 700 !important;
-  flex-shrink: 0;
 }
 
 .top-right {
