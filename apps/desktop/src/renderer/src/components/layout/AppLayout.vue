@@ -673,6 +673,7 @@ function onSearchBlur() {
   flex: 1;
   min-width: 0;
   padding: var(--space-5) var(--page-x) var(--space-7);
+  -webkit-app-region: no-drag;
 }
 
 .main.immersive,
