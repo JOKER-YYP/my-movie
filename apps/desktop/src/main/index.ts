@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell } from 'electron'
+import { app, BrowserWindow, Menu, ipcMain, shell } from 'electron'
 import { join } from 'path'
 
 let mainWindow: BrowserWindow | null = null
@@ -10,7 +10,9 @@ function createWindow(): void {
     minWidth: 1024,
     minHeight: 640,
     show: false,
-    backgroundColor: '#0b0d12',
+    frame: false,
+    autoHideMenuBar: true,
+    backgroundColor: '#121212',
     title: 'my-movie',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -21,7 +23,11 @@ function createWindow(): void {
   })
 
   const win = mainWindow
+
   win.on('ready-to-show', () => win.show())
+  win.on('maximize', () => win.webContents.send('window:maximized', true))
+  win.on('unmaximize', () => win.webContents.send('window:maximized', false))
+
   win.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)
     return { action: 'deny' }
@@ -34,7 +40,28 @@ function createWindow(): void {
   }
 }
 
+function registerWindowIpc(): void {
+  ipcMain.handle('window:minimize', () => {
+    mainWindow?.minimize()
+  })
+  ipcMain.handle('window:maximize', () => {
+    if (!mainWindow) return false
+    if (mainWindow.isMaximized()) {
+      mainWindow.unmaximize()
+      return false
+    }
+    mainWindow.maximize()
+    return true
+  })
+  ipcMain.handle('window:close', () => {
+    mainWindow?.close()
+  })
+  ipcMain.handle('window:isMaximized', () => Boolean(mainWindow?.isMaximized()))
+}
+
 app.whenReady().then(() => {
+  Menu.setApplicationMenu(null)
+  registerWindowIpc()
   createWindow()
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

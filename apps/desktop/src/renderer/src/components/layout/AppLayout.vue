@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { NButton, NInput } from 'naive-ui'
+import WindowControls from '@/components/layout/WindowControls.vue'
 import { useUserStore } from '@/stores/user'
 import { useSourcesStore } from '@/stores/sources'
 import { useSearchHistoryStore } from '@/stores/searchHistory'
@@ -78,8 +79,14 @@ function onSearchBlur() {
 
 <template>
   <div class="shell">
-    <header v-if="!hideChrome" class="topbar">
-      <div class="brand-row">
+    <!-- 无边框窗口：始终保留可拖拽标题区 + 窗口按钮 -->
+    <div v-if="hideChrome" class="titlebar titlebar-slim">
+      <div class="drag-fill" />
+      <WindowControls />
+    </div>
+
+    <header v-else class="topbar">
+      <div class="brand-row no-drag">
         <button v-if="showBack" type="button" class="icon-btn" aria-label="返回" @click="goBack">
           <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
             <path
@@ -90,7 +97,7 @@ function onSearchBlur() {
         </button>
         <button type="button" class="brand" @click="router.push('/')">my-movie</button>
       </div>
-      <nav class="nav" aria-label="主导航">
+      <nav class="nav no-drag" aria-label="主导航">
         <RouterLink
           v-for="item in navs"
           :key="item.to"
@@ -101,7 +108,7 @@ function onSearchBlur() {
           {{ item.label }}
         </RouterLink>
       </nav>
-      <div class="search">
+      <div class="search no-drag">
         <div class="search-field">
           <NInput
             v-model:value="keyword"
@@ -143,13 +150,15 @@ function onSearchBlur() {
         </div>
         <NButton type="primary" class="search-btn" @click="onSearch">搜索</NButton>
       </div>
-      <div class="user">
+      <div class="user no-drag">
         <NButton v-if="userStore.user" quaternary @click="userStore.logout()">
           {{ userStore.user.nickname || userStore.user.username }}
         </NButton>
         <NButton v-else quaternary @click="router.push('/login')">登录</NButton>
       </div>
+      <WindowControls />
     </header>
+
     <main class="main" :class="{ immersive: hideChrome, flush: flushMain }">
       <RouterView v-slot="{ Component, route: r }">
         <KeepAlive include="SearchView">
@@ -166,24 +175,57 @@ function onSearchBlur() {
   background: var(--bg);
 }
 
+.titlebar,
+.topbar {
+  -webkit-app-region: drag;
+  user-select: none;
+}
+
+.no-drag {
+  -webkit-app-region: no-drag;
+}
+
+.titlebar-slim {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  height: 36px;
+  display: flex;
+  align-items: stretch;
+  background: var(--bg);
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 28%, transparent);
+}
+
+.drag-fill {
+  flex: 1;
+  min-width: 0;
+}
+
 .topbar {
   position: sticky;
   top: 0;
   z-index: 20;
   height: var(--header-h);
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) minmax(220px, 340px) auto;
-  gap: var(--space-4);
-  align-items: center;
-  padding: 0 var(--page-x);
+  grid-template-columns: auto minmax(0, 1fr) minmax(200px, 320px) auto auto;
+  gap: var(--space-3);
+  align-items: stretch;
+  padding: 0 0 0 var(--page-x);
   background: color-mix(in srgb, var(--bg) 92%, transparent);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid color-mix(in srgb, var(--line) 35%, transparent);
 }
 
-.brand-row {
+.brand-row,
+.nav,
+.search,
+.user {
   display: flex;
   align-items: center;
+  align-self: center;
+}
+
+.brand-row {
   gap: var(--space-2);
   min-width: 0;
 }
@@ -226,10 +268,10 @@ function onSearchBlur() {
 }
 
 .nav {
-  display: flex;
   gap: 2px;
   overflow: auto;
   scrollbar-width: none;
+  min-width: 0;
 }
 
 .nav::-webkit-scrollbar {
@@ -258,10 +300,8 @@ function onSearchBlur() {
 }
 
 .search {
-  display: flex;
   gap: var(--space-2);
   min-width: 0;
-  align-items: center;
 }
 
 .search-field {
@@ -286,6 +326,7 @@ function onSearchBlur() {
   box-shadow: var(--shadow-heavy);
   max-height: 280px;
   overflow: auto;
+  -webkit-app-region: no-drag;
 }
 
 .history-head {
@@ -383,7 +424,8 @@ function onSearchBlur() {
     grid-template-columns: auto 1fr auto;
     grid-template-rows: auto auto auto;
     height: auto;
-    padding-top: 10px;
+    min-height: var(--header-h);
+    padding-top: 6px;
     padding-bottom: 10px;
     row-gap: 10px;
   }
@@ -393,8 +435,14 @@ function onSearchBlur() {
   }
 
   .user {
-    grid-column: 3;
+    grid-column: 2;
     justify-self: end;
+  }
+
+  .topbar > :deep(.controls),
+  .topbar > :last-child {
+    grid-column: 3;
+    grid-row: 1;
   }
 
   .nav {
@@ -405,6 +453,7 @@ function onSearchBlur() {
   .search {
     grid-column: 1 / -1;
     grid-row: 3;
+    padding-right: var(--page-x);
   }
 }
 </style>
