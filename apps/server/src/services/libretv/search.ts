@@ -9,10 +9,10 @@ import {
 import { getSource, listSources } from './sources.js'
 import { TtlCache } from '../../utils/ttlCache.js'
 
-/** 对齐 LibreTV classic：search.js 单源超时 15s */
+/** 对齐 LibreTV classic：AGGREGATED_SEARCH_CONFIG.timeout = 8000 */
 function timeoutMs(): number {
-  const n = Number(process.env.SEARCH_SOURCE_TIMEOUT_MS || 15000)
-  return Number.isFinite(n) && n > 0 ? n : 15000
+  const n = Number(process.env.SEARCH_SOURCE_TIMEOUT_MS || 8000)
+  return Number.isFinite(n) && n > 0 ? n : 8000
 }
 
 /** 对齐 LibreTV classic：API_CONFIG.search.maxPages = 50 */

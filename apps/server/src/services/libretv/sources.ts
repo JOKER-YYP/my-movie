@@ -107,7 +107,8 @@ export const LIBRETV_SOURCES: VodSource[] = [
   {
     key: 'lzi',
     name: '量子资源站',
-    api: 'https://cj.lziapi.com/api.php/provide/vod',
+    // 与 libretv.liumingye.cn/js/config.js 保持一致（尾斜杠由 normalizeApiBase 去除）
+    api: 'https://cj.lziapi.com/api.php/provide/vod/',
   },
 ]
 

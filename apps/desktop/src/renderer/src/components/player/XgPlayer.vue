@@ -9,6 +9,7 @@ const props = defineProps<{
   url: string
   title?: string
   autoplay?: boolean
+  /** true=强制代理；false=强制直连；默认跟随设置，失败自动切换 */
   useProxy?: boolean
   /** 续播起点（秒）；接近片尾则忽略 */
   startTime?: number
@@ -19,15 +20,20 @@ const emit = defineEmits<{
   ended: []
   error: [message: string]
   ready: []
+  proxyFallback: [usingProxy: boolean]
 }>()
 
 const root = ref<HTMLDivElement | null>(null)
 let player: Player | null = null
 let seekApplied = false
+/** 当前实际是否走代理 */
+let activeProxy = false
+/** 本集是否已尝试过直连/代理切换 */
+let switchedOnce = false
 
-function resolveUrl(url: string) {
+function resolveUrl(url: string, viaProxy: boolean) {
   if (!url) return url
-  if (props.useProxy) return proxyUrl(url)
+  if (viaProxy) return proxyUrl(url)
   return url
 }
 
@@ -41,19 +47,19 @@ function trySeek() {
   if (!player || seekApplied) return
   const start = props.startTime || 0
   const duration = player.duration || 0
-  // 换源续播允许从 1s 起跳；接近片尾则不跳，避免瞬间结束
   if (start < 1) return
   if (duration > 0 && start > Math.max(1, duration - 8)) return
   player.currentTime = start
   seekApplied = true
 }
 
-function create() {
+function create(viaProxy: boolean) {
   if (!root.value || !props.url) return
   destroy()
+  activeProxy = viaProxy
   player = new Player({
     el: root.value,
-    url: resolveUrl(props.url),
+    url: resolveUrl(props.url, viaProxy),
     plugins: [HlsPlugin],
     autoplay: props.autoplay ?? true,
     fluid: true,
@@ -62,6 +68,16 @@ function create() {
     videoFillMode: 'contain',
     lastPlayTime: props.startTime && props.startTime >= 1 ? props.startTime : undefined,
     lastPlayTimeHideDelay: 3,
+    // 对齐 LibreTV hls 重试参数，降低偶发分片失败
+    hls: {
+      enableWorker: true,
+      maxBufferLength: 30,
+      maxMaxBufferLength: 60,
+      fragLoadingMaxRetry: 6,
+      manifestLoadingMaxRetry: 3,
+      levelLoadingMaxRetry: 4,
+      appendErrorMaxRetry: 5,
+    },
   })
   player.on('loadedmetadata', () => {
     trySeek()
@@ -74,15 +90,30 @@ function create() {
   })
   player.on('ended', () => emit('ended'))
   player.on('error', () => {
-    emit('error', '播放失败，可尝试开启代理或换源')
+    // 对齐 LibreTV：直连失败自动改走代理（或反过来再试一次）
+    if (!switchedOnce) {
+      switchedOnce = true
+      const next = !activeProxy
+      emit('proxyFallback', next)
+      create(next)
+      return
+    }
+    emit('error', '播放失败，可尝试切换「媒体代理」或换源')
   })
 }
 
-onMounted(create)
+function boot() {
+  switchedOnce = false
+  // 用户显式开关优先；默认先走代理（规避 CORS/防盗链，与本站代理能力对齐）
+  const prefer = props.useProxy !== false
+  create(prefer)
+}
+
+onMounted(boot)
 onBeforeUnmount(destroy)
 watch(
   () => [props.url, props.useProxy] as const,
-  () => create(),
+  () => boot(),
 )
 watch(
   () => props.startTime,

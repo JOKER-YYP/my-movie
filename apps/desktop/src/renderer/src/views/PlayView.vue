@@ -243,6 +243,12 @@ onBeforeUnmount(clearCountdown)
       :start-time="resumeSec"
       @timeupdate="onTimeupdate"
       @ended="onEnded"
+      @proxy-fallback="
+        (via) => {
+          useProxy = via
+          message.info(via ? '直连失败，已切换媒体代理' : '代理失败，已尝试直连')
+        }
+      "
       @error="(msg) => message.error(msg)"
     />
     <div v-else class="empty">{{ loading ? '加载中…' : '暂无可播放地址' }}</div>
