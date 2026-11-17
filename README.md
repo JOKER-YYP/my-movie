@@ -33,16 +33,20 @@ pnpm dev:server
 pnpm dev:desktop
 ```
 
-### 片源代理模式
+### 搜索与片源
+
+- **搜索逻辑自研**：多源并行 + 翻页合并（对齐 LibreTV classic `searchByAPIAndKeyWord`），不调用对方搜索页。
+- **出网中转**：默认经 `https://libretv.liumingye.cn/proxy/` 访问采集站（本机直连多数源会被重置）；失败再直连。
 
 `apps/server/.env` 中：
 
-- `LIBRETV_PROXY_MODE=via_libretv`（默认）：经 https://libretv.liumingye.cn/proxy/ 访问采集站（失败会直连回退）
-- `LIBRETV_PROXY_MODE=direct`：服务端直连 CMS
-- `SEARCH_SOURCE_TIMEOUT_MS`：单源超时，默认 `15000`（对齐 LibreTV）
-- `SEARCH_MAX_PAGES`：单源最多翻页数，默认 `50`（对齐 LibreTV classic）
-- `SEARCH_CACHE_TTL_MS`：搜索服务端缓存，默认 `600000`（10 分钟）
-- `DETAIL_CACHE_TTL_MS`：详情服务端缓存，默认 `1800000`（30 分钟）
+- `CMS_FETCH_MODE=relay`（默认）/ `direct`
+- `LIBRETV_BASE_URL`：中转站，默认 `https://libretv.liumingye.cn`
+- `SEARCH_SOURCE_TIMEOUT_MS`：单源超时，默认 `15000`
+- `SEARCH_MAX_PAGES`：单源最多翻页数，默认 `50`
+- `CMS_FETCH_RETRIES`：单次出网重试，默认 `1`
+- `SEARCH_CACHE_TTL_MS`：搜索缓存，默认 `600000`（空结果不缓存）
+- `DETAIL_CACHE_TTL_MS`：详情缓存，默认 `1800000`
 
 ## 目录
 

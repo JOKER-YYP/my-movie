@@ -9,7 +9,8 @@ type Entry = VodSearchCachePayload & {
   at: number
 }
 
-const STORAGE_KEY = 'vodSearchCache.v1'
+/** 版本号变更用于丢弃旧通道下的空/残缺结果缓存 */
+const STORAGE_KEY = 'vodSearchCache.v4'
 /** 新鲜期：直接返回，不打网 */
 const FRESH_MS = 15 * 60 * 1000
 /** 过期但仍可先展示、后台刷新 */
@@ -91,6 +92,16 @@ export function peekSearchCache(
 }
 
 export function setSearchCache(key: string, data: VodSearchCachePayload) {
+  // 空结果不落盘，避免把短暂全源失败锁住 15 分钟
+  if (!data.list.length) {
+    memory.delete(key)
+    const disk = readDisk()
+    if (disk[key]) {
+      delete disk[key]
+      writeDisk(disk)
+    }
+    return
+  }
   const entry: Entry = { ...data, at: Date.now() }
   memory.set(key, entry)
   const disk = prune({ ...readDisk(), [key]: entry })

@@ -27,17 +27,68 @@ export interface CmsVodItem {
   vod_play_url?: string
 }
 
+function cmsRetries(): number {
+  const n = Number(process.env.CMS_FETCH_RETRIES || 1)
+  return Number.isFinite(n) && n >= 0 ? Math.min(4, Math.floor(n)) : 1
+}
+
+function libreTvBase(): string {
+  return (process.env.LIBRETV_BASE_URL || 'https://libretv.liumingye.cn').replace(/\/+$/, '')
+}
+
+/** 仅作「出网中转」：对齐官网前端 PROXY_URL，不是调用他们的搜索页/聚合接口 */
 function libreTvProxyUrl(upstream: string): string {
-  const base = (process.env.LIBRETV_BASE_URL || 'https://libretv.liumingye.cn').replace(/\/+$/, '')
-  return `${base}/proxy/${encodeURIComponent(upstream)}`
+  return `${libreTvBase()}/proxy/${encodeURIComponent(upstream)}`
+}
+
+/**
+ * CMS 出网模式：
+ * - relay（默认）：先走 LibreTV /proxy/ 中转（国内多数采集站直连会被重置），失败再直连
+ * - direct：只直连采集站
+ */
+function cmsFetchMode(): 'relay' | 'direct' {
+  const raw = (process.env.CMS_FETCH_MODE || process.env.LIBRETV_PROXY_MODE || 'relay').toLowerCase()
+  if (raw === 'direct') return 'direct'
+  // 兼容旧配置 via_libretv
+  return 'relay'
+}
+
+/** 宽松解析 CMS JSON（兼容 BOM / 前后杂质 / list:null） */
+export function parseCmsJsonText(text: string): unknown {
+  const trimmed = text.replace(/^\uFEFF/, '').trim()
+  if (!trimmed) throw new Error('空响应')
+  try {
+    return JSON.parse(trimmed) as unknown
+  } catch {
+    const start = trimmed.indexOf('{')
+    const end = trimmed.lastIndexOf('}')
+    if (start >= 0 && end > start) {
+      try {
+        return JSON.parse(trimmed.slice(start, end + 1)) as unknown
+      } catch {
+        /* fallthrough */
+      }
+    }
+    const preview = trimmed.slice(0, 24)
+    throw new Error(`非 JSON 响应: ${preview || '(空)'}`)
+  }
 }
 
 async function fetchTextOnce(url: string, timeoutMs: number, accept = '*/*'): Promise<string> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
+  const headers: Record<string, string> = {
+    'User-Agent': UA,
+    Accept: accept,
+  }
+  try {
+    headers.Referer = `${new URL(url).origin}/`
+  } catch {
+    /* ignore */
+  }
   try {
     const res = await fetch(url, {
-      headers: { 'User-Agent': UA, Accept: accept },
+      headers,
       signal: controller.signal,
     })
     if (!res.ok) {
@@ -49,47 +100,54 @@ async function fetchTextOnce(url: string, timeoutMs: number, accept = '*/*'): Pr
   }
 }
 
-async function fetchOnce(url: string, timeoutMs: number): Promise<unknown> {
-  const text = await fetchTextOnce(url, timeoutMs, 'application/json')
-  try {
-    return JSON.parse(text) as unknown
-  } catch {
-    const preview = text.trim().slice(0, 24)
-    throw new Error(`非 JSON 响应: ${preview || '(空)'}`)
+async function fetchTextWithRetry(url: string, timeoutMs: number, accept = '*/*'): Promise<string> {
+  const retries = cmsRetries()
+  let lastError: unknown
+  for (let i = 0; i <= retries; i++) {
+    try {
+      return await fetchTextOnce(url, timeoutMs, accept)
+    } catch (err) {
+      lastError = err
+      // 超时不再重试，避免拖垮整次聚合搜索
+      if (err instanceof Error && err.name === 'AbortError') throw err
+    }
   }
+  throw lastError instanceof Error ? lastError : new Error('请求失败')
 }
 
-/** 对齐 LibreTV：优先经 /proxy/ 访问采集站；失败时可直连回退 */
+/**
+ * 拉取采集站 JSON。
+ * 搜索聚合逻辑在 search.ts（自研多源并行）；这里只解决「打得到采集站」。
+ * 图二历史播放能出详情，正是因为走了 LibreTV /proxy/ 中转。
+ */
 export async function fetchCmsJson(upstreamUrl: string, timeoutMs: number): Promise<unknown> {
-  const mode = process.env.LIBRETV_PROXY_MODE || 'via_libretv'
+  const accept = 'application/json,text/plain,*/*'
+  const mode = cmsFetchMode()
   if (mode === 'direct') {
-    return fetchOnce(upstreamUrl, timeoutMs)
+    return parseCmsJsonText(await fetchTextWithRetry(upstreamUrl, timeoutMs, accept))
   }
-  if (mode === 'via_libretv') {
-    try {
-      return await fetchOnce(libreTvProxyUrl(upstreamUrl), timeoutMs)
-    } catch {
-      // 公共代理偶发不可用时直连 CMS，行为仍对齐「能搜到尽量搜到」
-      return fetchOnce(upstreamUrl, timeoutMs)
-    }
+
+  try {
+    const text = await fetchTextWithRetry(libreTvProxyUrl(upstreamUrl), timeoutMs, accept)
+    return parseCmsJsonText(text)
+  } catch {
+    // 中转不可用时再直连（部分源本机可达）
+    return parseCmsJsonText(await fetchTextWithRetry(upstreamUrl, timeoutMs, accept))
   }
-  return fetchOnce(upstreamUrl, timeoutMs)
 }
 
-/** 拉取详情页 HTML（同样经 LibreTV 公共代理优先） */
+/** 拉取详情页 HTML（同样优先中转） */
 export async function fetchCmsHtml(upstreamUrl: string, timeoutMs: number): Promise<string> {
-  const mode = process.env.LIBRETV_PROXY_MODE || 'via_libretv'
+  const accept = 'text/html,*/*'
+  const mode = cmsFetchMode()
   if (mode === 'direct') {
-    return fetchTextOnce(upstreamUrl, timeoutMs, 'text/html,*/*')
+    return fetchTextWithRetry(upstreamUrl, timeoutMs, accept)
   }
-  if (mode === 'via_libretv') {
-    try {
-      return await fetchTextOnce(libreTvProxyUrl(upstreamUrl), timeoutMs, 'text/html,*/*')
-    } catch {
-      return fetchTextOnce(upstreamUrl, timeoutMs, 'text/html,*/*')
-    }
+  try {
+    return await fetchTextWithRetry(libreTvProxyUrl(upstreamUrl), timeoutMs, accept)
+  } catch {
+    return fetchTextWithRetry(upstreamUrl, timeoutMs, accept)
   }
-  return fetchTextOnce(upstreamUrl, timeoutMs, 'text/html,*/*')
 }
 
 export function buildSearchUrl(source: VodSource, wd: string, page = 1): string {
@@ -147,6 +205,25 @@ const M3U8_PATTERN = /\$https?:\/\/[^"'\s]+?\.m3u8/g
 export function isAdultContent(item: Pick<VodSearchItem, 'title' | 'typeName'>): boolean {
   const text = `${item.title || ''} ${item.typeName || ''}`
   return ADULT_KEYWORDS.some((k) => text.includes(k))
+}
+
+/** 对齐 LibreTV：去空白/标点后做标题相关性匹配，丢掉源站灌水结果 */
+export function normalizeTitle(s: string): string {
+  return s.toLowerCase().replace(/[\s\p{P}\p{S}]+/gu, '')
+}
+
+export function isRelevantTitle(title: string, wd: string): boolean {
+  const needle = normalizeTitle(wd)
+  if (!needle) return true
+  const hay = normalizeTitle(title || '')
+  if (!hay) return false
+  if (hay.includes(needle)) return true
+  const tokens = wd
+    .trim()
+    .split(/\s+/)
+    .map(normalizeTitle)
+    .filter(Boolean)
+  return tokens.length > 1 && tokens.every((t) => hay.includes(t))
 }
 
 /** 从简介等文本兜底提取 m3u8 */

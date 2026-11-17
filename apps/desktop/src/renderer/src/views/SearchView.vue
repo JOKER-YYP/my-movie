@@ -20,6 +20,17 @@ const list = ref<VodSearchItem[]>([])
 const failures = ref<SearchFailure[]>([])
 const q = computed(() => String(route.query.q || '').trim())
 
+/** 成功源及其条数（数据就在下方卡片列表里，角标为 sourceName） */
+const successStats = computed(() => {
+  const map = new Map<string, number>()
+  for (const item of list.value) {
+    map.set(item.sourceName, (map.get(item.sourceName) || 0) + 1)
+  }
+  return [...map.entries()]
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'zh-CN'))
+})
+
 function goHistory(item: string) {
   searchHistory.add(item)
   router.push({ path: '/search', query: { q: item } })
@@ -115,17 +126,26 @@ watch(q, () => runSearch(false), { immediate: true })
       </div>
     </div>
 
-    <div v-if="failures.length" class="fail-bar" role="status">
-      <span class="fail-label">部分源失败</span>
-      <span
-        v-for="f in failures"
-        :key="f.sourceKey"
-        class="fail-chip"
-        :title="f.error"
-      >
-        {{ f.sourceName }}
-        <em>{{ f.timedOut ? '超时' : '失败' }}</em>
-      </span>
+    <div v-if="q && !loading && (successStats.length || failures.length)" class="status-bar" role="status">
+      <div v-if="successStats.length" class="ok-bar">
+        <span class="ok-label">已成功 {{ successStats.length }} 个源</span>
+        <span v-for="s in successStats" :key="s.name" class="ok-chip" :title="`${s.count} 条结果`">
+          {{ s.name }}
+          <em>{{ s.count }}</em>
+        </span>
+      </div>
+      <div v-if="failures.length" class="fail-bar">
+        <span class="fail-label">失败 {{ failures.length }} 个源</span>
+        <span
+          v-for="f in failures"
+          :key="f.sourceKey"
+          class="fail-chip"
+          :title="f.error"
+        >
+          {{ f.sourceName }}
+          <em>{{ f.timedOut ? '超时' : '失败' }}</em>
+        </span>
+      </div>
     </div>
 
     <NSpin :show="loading">
@@ -277,25 +297,48 @@ watch(q, () => runSearch(false), { immediate: true })
   color: var(--text);
 }
 
+.status-bar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.ok-bar,
 .fail-bar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
-  margin-bottom: var(--space-4);
   padding: 10px 12px;
   border-radius: var(--radius);
+}
+
+.ok-bar {
+  background: color-mix(in srgb, var(--accent) 10%, var(--bg-elevated));
+}
+
+.fail-bar {
   background: color-mix(in srgb, var(--warning) 12%, var(--bg-elevated));
 }
 
+.ok-label,
 .fail-label {
   font-size: 12px;
   font-weight: 700;
-  color: var(--warning);
   letter-spacing: 0.04em;
   margin-right: 4px;
 }
 
+.ok-label {
+  color: var(--accent);
+}
+
+.fail-label {
+  color: var(--warning);
+}
+
+.ok-chip,
 .fail-chip {
   display: inline-flex;
   align-items: center;
@@ -308,6 +351,7 @@ watch(q, () => runSearch(false), { immediate: true })
   font-weight: 700;
 }
 
+.ok-chip em,
 .fail-chip em {
   font-style: normal;
   font-weight: 400;

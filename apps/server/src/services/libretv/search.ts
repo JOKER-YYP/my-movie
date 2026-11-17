@@ -3,16 +3,20 @@ import {
   buildSearchUrl,
   fetchCmsJson,
   isAdultContent,
+  isRelevantTitle,
   mapSearchItem,
   type CmsListResponse,
 } from './cms.js'
 import { getSource, listSources } from './sources.js'
 import { TtlCache } from '../../utils/ttlCache.js'
 
-/** 对齐 LibreTV classic：AGGREGATED_SEARCH_CONFIG.timeout = 8000 */
+/**
+ * 对齐 LibreTV classic `searchByAPIAndKeyWord`：
+ * 单页请求超时 15s（官网 search.js），多源由调用方 Promise.all 并行。
+ */
 function timeoutMs(): number {
-  const n = Number(process.env.SEARCH_SOURCE_TIMEOUT_MS || 8000)
-  return Number.isFinite(n) && n > 0 ? n : 8000
+  const n = Number(process.env.SEARCH_SOURCE_TIMEOUT_MS || 15000)
+  return Number.isFinite(n) && n > 0 ? n : 15000
 }
 
 /** 对齐 LibreTV classic：API_CONFIG.search.maxPages = 50 */
@@ -31,13 +35,14 @@ const searchCache = new TtlCache<SearchResponse>(10 * 60 * 1000, 300)
 
 function mapList(data: CmsListResponse, source: ReturnType<typeof getSource>): VodSearchItem[] {
   if (!source) return []
+  // 部分源无结果返回 list:null，按空数组兼容（对齐 LibreTV cms-parser）
   const rawList = Array.isArray(data.list) ? data.list : []
   return rawList.map((item) => mapSearchItem(item, source)).filter((x): x is VodSearchItem => Boolean(x))
 }
 
 /**
- * 对齐 LibreTV `searchByAPIAndKeyWord`：
- * 先拉第 1 页，再按 pagecount 并行补拉后续页（上限 maxPages）。
+ * 单源搜索：先拉第 1 页，再按 pagecount 并行补拉后续页（上限 maxPages）。
+ * 逻辑对齐 LibreTV classic searchByAPIAndKeyWord；出网中转见 cms.fetchCmsJson。
  */
 async function searchOne(
   sourceKey: string,
@@ -108,12 +113,13 @@ export async function aggregateSearch(options: {
       ? Math.min(50, Math.max(1, Math.floor(options.maxPages)))
       : defaultMaxPages()
 
-  // LibreTV classic：黄滤默认关闭（localStorage yellowFilterEnabled === 'true' 才开）
+  // LibreTV classic：黄滤默认关闭
   const filterAdult = options.filterAdult === true
-  const cacheKey = `search:${wd}::${[...keys].sort().join(',')}::${filterAdult ? 1 : 0}::p${pagesLimit}`
+  const cacheKey = `search:v4:${wd}::${[...keys].sort().join(',')}::${filterAdult ? 1 : 0}::p${pagesLimit}`
   const cached = searchCache.get(cacheKey)
   if (cached) return cached
 
+  // 多源并行，单源失败不影响其它源（对齐 LibreTV 聚合搜索）
   const settled = await Promise.all(keys.map((key) => searchOne(key, wd, pagesLimit)))
   const failures = settled.map((s) => s.failure).filter((f): f is SearchFailure => Boolean(f))
   const seen = new Set<string>()
@@ -122,6 +128,8 @@ export async function aggregateSearch(options: {
   for (const s of settled) {
     for (const item of s.list) {
       if (filterAdult && isAdultContent(item)) continue
+      // 丢掉「搜河神却返回 NBA」这类源站灌水
+      if (!isRelevantTitle(item.title, wd)) continue
       const id = `${item.sourceKey}:${item.vodId}`
       if (seen.has(id)) continue
       seen.add(id)
@@ -129,7 +137,6 @@ export async function aggregateSearch(options: {
     }
   }
 
-  // 对齐 LibreTV：先按片名，同名再按源名
   list.sort((a, b) => {
     const byTitle = a.title.localeCompare(b.title, 'zh-CN')
     if (byTitle !== 0) return byTitle
@@ -137,6 +144,9 @@ export async function aggregateSearch(options: {
   })
 
   const result = { list, failures }
-  searchCache.set(cacheKey, result, searchCacheTtlMs())
+  // 全失败或空结果不缓存，避免把短暂网络故障锁住
+  if (list.length > 0) {
+    searchCache.set(cacheKey, result, searchCacheTtlMs())
+  }
   return result
 }
