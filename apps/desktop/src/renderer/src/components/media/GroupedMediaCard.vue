@@ -109,20 +109,20 @@ watch(
   font-size: 11px;
   font-weight: 700;
   line-height: 1.2;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-soft);
   pointer-events: none;
 }
 
 .badge {
   position: absolute;
-  right: 8px;
-  bottom: 8px;
+  right: var(--space-2);
+  bottom: var(--space-2);
   z-index: 1;
   max-width: calc(100% - 16px);
   padding: 3px 8px;
-  border-radius: 4px;
-  background: rgba(0, 0, 0, 0.78);
-  color: #fff;
+  border-radius: var(--radius-sm);
+  background: var(--scrim-strong);
+  color: var(--on-media);
   font-size: 11px;
   font-weight: 700;
   line-height: 1.2;
@@ -131,7 +131,7 @@ watch(
   text-overflow: ellipsis;
   white-space: nowrap;
   backdrop-filter: blur(6px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
+  box-shadow: var(--shadow-soft);
   pointer-events: none;
 }
 

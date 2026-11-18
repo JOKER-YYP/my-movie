@@ -81,16 +81,79 @@ a:focus-visible,
   background: var(--scrollbar-hover);
 }
 
+/* 页面内容区：边距由 AppLayout .main 统一负责，此处只做宽度与页头契约 */
 .page {
-  padding: var(--space-5) var(--page-x) var(--space-7);
+  width: 100%;
+  max-width: var(--page-max);
+}
+
+.page.wide {
+  max-width: var(--page-max-wide);
 }
 
 .page-title {
   margin: 0 0 var(--space-2);
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.2;
 }
 
 .page-hint {
   margin: 0 0 var(--space-5);
   color: var(--text-muted);
   font-size: 14px;
+  line-height: 1.4;
+}
+
+.section-label {
+  margin: 0 0 var(--space-2);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+}
+
+.chip,
+.pill-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--bg-soft);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, opacity 0.15s ease;
+}
+
+.chip {
+  padding: var(--chip-pad-sm);
+}
+
+.pill-btn {
+  padding: var(--chip-pad);
+  color: var(--text);
+}
+
+.chip:hover,
+.pill-btn:hover:not(:disabled) {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+.chip.active,
+.pill-btn.active,
+.pill-btn.primary {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.pill-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
 }

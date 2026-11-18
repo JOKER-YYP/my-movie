@@ -87,11 +87,11 @@ watch(q, () => runSearch(false), { immediate: true })
 </script>
 
 <template>
-  <div class="search-page">
+  <div class="page wide search-page">
     <div class="head">
       <div class="titles">
-        <h1>{{ q ? `搜索：${q}` : '搜索' }}</h1>
-        <p v-if="!loading && q" class="count">{{ list.length }} 个结果</p>
+        <h1 class="page-title">{{ q ? `搜索：${q}` : '搜索' }}</h1>
+        <p v-if="!loading && q" class="page-hint count">{{ list.length }} 个结果</p>
       </div>
       <button v-if="q" type="button" class="refresh" :disabled="loading" @click="runSearch(true)">
         刷新结果
@@ -167,7 +167,7 @@ watch(q, () => runSearch(false), { immediate: true })
 
 <style scoped lang="scss">
 .search-page {
-  max-width: 1600px;
+  max-width: var(--page-max-wide);
 }
 
 .head {
@@ -178,14 +178,12 @@ watch(q, () => runSearch(false), { immediate: true })
   margin-bottom: var(--space-4);
 }
 
-.titles h1 {
-  margin: 0;
+.titles .page-title {
+  margin-bottom: 0;
 }
 
 .count {
-  margin: 6px 0 0;
-  color: var(--text-muted);
-  font-size: 14px;
+  margin: var(--space-1) 0 0;
 }
 
 .refresh {
@@ -195,9 +193,9 @@ watch(q, () => runSearch(false), { immediate: true })
   cursor: pointer;
   font-size: 12px;
   font-weight: 700;
-  letter-spacing: 1.2px;
+  letter-spacing: 1.4px;
   text-transform: uppercase;
-  padding: 8px 16px;
+  padding: var(--chip-pad-lg);
   border-radius: var(--radius-pill);
   transition: background 0.15s ease, color 0.15s ease;
 }
@@ -224,7 +222,8 @@ watch(q, () => runSearch(false), { immediate: true })
   color: var(--text-muted);
   font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
 }
 
 .clear-all {
@@ -249,13 +248,13 @@ watch(q, () => runSearch(false), { immediate: true })
 .chip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-2);
   max-width: 100%;
   border: 0;
   background: var(--bg-soft);
   color: var(--text-muted);
   border-radius: var(--radius-pill);
-  padding: 6px 8px 6px 12px;
+  padding: var(--chip-pad);
   cursor: pointer;
   font-size: 13px;
   font-weight: 700;
@@ -361,7 +360,7 @@ watch(q, () => runSearch(false), { immediate: true })
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
-  gap: 18px;
+  gap: var(--space-grid);
   padding-top: var(--space-2);
 }
 

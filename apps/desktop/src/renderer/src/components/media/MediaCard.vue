@@ -89,17 +89,17 @@ watch(
 }
 
 .source {
-  left: 8px;
-  top: 8px;
-  background: rgba(0, 0, 0, 0.72);
-  color: #fff;
+  left: var(--space-2);
+  top: var(--space-2);
+  background: var(--scrim-mid);
+  color: var(--on-media);
 }
 
 .badge {
-  right: 8px;
-  bottom: 8px;
-  background: rgba(0, 0, 0, 0.78);
-  color: #fff;
+  right: var(--space-2);
+  bottom: var(--space-2);
+  background: var(--scrim-strong);
+  color: var(--on-media);
   font-weight: 700;
   font-size: 11px;
   letter-spacing: 0.02em;

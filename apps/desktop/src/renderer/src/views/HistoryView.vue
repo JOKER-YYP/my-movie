@@ -32,6 +32,6 @@ onMounted(async () => {
 
 <style scoped>
 .page {
-  max-width: 1200px;
+  max-width: var(--page-max);
 }
 </style>

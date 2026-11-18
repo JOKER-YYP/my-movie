@@ -75,7 +75,7 @@ h2 {
 .track {
   display: flex;
   align-items: flex-start;
-  gap: 14px;
+  gap: var(--space-rail);
   overflow-x: auto;
   padding-bottom: 4px;
   scrollbar-width: none;

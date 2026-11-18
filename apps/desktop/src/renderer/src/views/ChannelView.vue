@@ -141,7 +141,7 @@ p {
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
-  gap: 18px;
+  gap: var(--space-grid);
   padding: 28px var(--page-x) 48px;
 }
 

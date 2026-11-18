@@ -61,10 +61,11 @@ const emit = defineEmits<{
   background: var(--bg-soft);
   color: var(--text-muted);
   border-radius: var(--radius-pill);
-  padding: 8px 16px;
+  padding: var(--chip-pad-lg);
   cursor: pointer;
   font-size: 12px;
   font-weight: 700;
+  letter-spacing: 0.04em;
   transition: background 0.15s ease, color 0.15s ease;
 }
 

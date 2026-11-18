@@ -61,7 +61,7 @@ onMounted(async () => {
 
 <style scoped lang="scss">
 .page {
-  max-width: 720px;
+  max-width: var(--page-max);
 }
 
 .list {
@@ -80,7 +80,7 @@ onMounted(async () => {
   background: var(--bg-elevated);
   color: var(--text);
   border-radius: var(--radius);
-  padding: 10px 12px;
+  padding: var(--space-3);
   cursor: pointer;
   transition: background 0.15s ease, transform 0.15s ease;
 }

@@ -314,7 +314,7 @@ function onSearchBlur() {
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background: color-mix(in srgb, var(--bg) 88%, #000);
+  background: color-mix(in srgb, var(--bg) 92%, var(--bg-elevated));
   border-right: 1px solid color-mix(in srgb, var(--line) 28%, transparent);
   -webkit-app-region: drag;
 }
@@ -329,7 +329,8 @@ function onSearchBlur() {
 }
 
 .logo {
-  margin: 4px 14px 18px;
+  margin: var(--space-1) var(--space-3) var(--space-5);
+  padding: 0 var(--space-2);
   border: 0;
   background: transparent;
   text-align: left;
@@ -343,8 +344,8 @@ function onSearchBlur() {
 .side-nav {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 0 10px 20px;
+  gap: var(--space-3);
+  padding: 0 var(--space-3) var(--space-5);
   overflow: auto;
   min-height: 0;
 }
@@ -357,17 +358,17 @@ function onSearchBlur() {
 
 .nav-divider {
   height: 1px;
-  margin: 8px 8px;
+  margin: var(--space-2) var(--space-2);
   background: color-mix(in srgb, var(--line) 45%, transparent);
 }
 
 .side-item {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-3);
   min-height: 40px;
-  padding: 0 12px;
-  border-radius: 10px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius);
   color: var(--text-muted);
   font-size: 14px;
   font-weight: 400;
@@ -478,13 +479,13 @@ function onSearchBlur() {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   width: 100%;
   min-height: 40px;
   padding: 0 6px 0 14px;
   border-radius: var(--radius-pill);
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: var(--overlay-fill);
+  border: 1px solid var(--overlay-line);
   transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
@@ -494,9 +495,13 @@ function onSearchBlur() {
 }
 
 .search-pill.focused {
-  background: rgba(255, 255, 255, 0.16);
+  background: var(--overlay-fill-strong);
   border-color: color-mix(in srgb, var(--accent) 55%, transparent);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.topbar:not(.overlay) .search-pill.focused {
+  background: var(--bg-hover);
 }
 
 .search-ico {
@@ -534,26 +539,27 @@ function onSearchBlur() {
   height: 22px;
   border: 0;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.16);
+  background: var(--overlay-fill-strong);
   color: var(--text);
   cursor: pointer;
   line-height: 1;
 }
 
 .clear-btn:hover {
-  background: rgba(255, 255, 255, 0.28);
+  background: var(--bg-hover);
 }
 
 .search-go {
   flex-shrink: 0;
   height: 30px;
-  padding: 0 14px;
+  padding: 0 var(--space-3);
   border: 0;
   border-radius: var(--radius-pill);
   background: transparent;
   color: var(--text);
   font-size: 13px;
   font-weight: 700;
+  letter-spacing: 0.04em;
   cursor: pointer;
   white-space: nowrap;
 }
@@ -564,11 +570,11 @@ function onSearchBlur() {
 
 .history-pop {
   position: absolute;
-  top: calc(100% + 8px);
+  top: calc(100% + var(--space-2));
   left: 0;
   right: 0;
   z-index: 40;
-  padding: 10px;
+  padding: var(--space-3);
   border-radius: var(--radius);
   background: var(--bg-elevated);
   box-shadow: var(--shadow-heavy);
@@ -581,11 +587,13 @@ function onSearchBlur() {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 8px;
-  padding: 0 4px;
+  margin-bottom: var(--space-2);
+  padding: 0 var(--space-1);
   color: var(--text-muted);
   font-size: 12px;
   font-weight: 700;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
 }
 
 .clear-all {
@@ -603,13 +611,13 @@ function onSearchBlur() {
 .history-item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   width: 100%;
   border: 0;
   background: transparent;
   color: var(--text);
   text-align: left;
-  padding: 8px 10px;
+  padding: var(--space-2) 10px;
   border-radius: var(--radius-pill);
   cursor: pointer;
   font-size: 13px;
@@ -655,8 +663,8 @@ function onSearchBlur() {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: var(--control-size);
+  height: var(--control-size);
   border: 0;
   border-radius: 50%;
   background: var(--bg-soft);

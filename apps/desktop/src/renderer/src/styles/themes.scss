@@ -7,7 +7,10 @@
   --radius-pill: 9999px;
   --header-h: 56px;
   --sidebar-w: 168px;
+  --control-size: 32px;
   --page-x: clamp(16px, 2.5vw, 32px);
+  --page-max: 1200px;
+  --page-max-wide: 1600px;
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -15,6 +18,11 @@
   --space-5: 20px;
   --space-6: 24px;
   --space-7: 32px;
+  --space-rail: 12px;
+  --space-grid: 16px;
+  --chip-pad-sm: 4px 10px;
+  --chip-pad: 8px 14px;
+  --chip-pad-lg: 8px 16px;
   --font-display: 'Helvetica Neue', Helvetica, Arial, 'Hiragino Sans', 'PingFang SC', 'Microsoft YaHei',
     sans-serif;
   --font-body: 'Helvetica Neue', Helvetica, Arial, 'Hiragino Sans', 'PingFang SC', 'Microsoft YaHei',
@@ -51,6 +59,11 @@
   --scrim-strong: rgba(18, 18, 18, 0.95);
   --scrim-mid: rgba(18, 18, 18, 0.55);
   --scrim-soft: rgba(18, 18, 18, 0.2);
+  --player-void: #000000;
+  --on-media: #ffffff;
+  --overlay-fill: color-mix(in srgb, #ffffff 12%, transparent);
+  --overlay-fill-strong: color-mix(in srgb, #ffffff 18%, transparent);
+  --overlay-line: color-mix(in srgb, #ffffff 14%, transparent);
   --hero-fallback: linear-gradient(160deg, #1f1f1f, #121212 70%);
   --banner-fallback: linear-gradient(135deg, #1f1f1f, #121212);
 }
@@ -83,6 +96,11 @@
   --scrim-strong: rgba(8, 10, 16, 0.92);
   --scrim-mid: rgba(8, 10, 16, 0.55);
   --scrim-soft: rgba(8, 10, 16, 0.25);
+  --player-void: #000000;
+  --on-media: #ffffff;
+  --overlay-fill: color-mix(in srgb, #ffffff 10%, transparent);
+  --overlay-fill-strong: color-mix(in srgb, #ffffff 16%, transparent);
+  --overlay-line: color-mix(in srgb, #ffffff 12%, transparent);
   --hero-fallback: linear-gradient(160deg, #121826, #0a0c11 55%);
   --banner-fallback: linear-gradient(135deg, #151c2b, #0a0c11);
 }
@@ -115,6 +133,11 @@
   --scrim-strong: rgba(20, 17, 15, 0.94);
   --scrim-mid: rgba(20, 17, 15, 0.55);
   --scrim-soft: rgba(20, 17, 15, 0.22);
+  --player-void: #000000;
+  --on-media: #ffffff;
+  --overlay-fill: color-mix(in srgb, #ffffff 10%, transparent);
+  --overlay-fill-strong: color-mix(in srgb, #ffffff 16%, transparent);
+  --overlay-line: color-mix(in srgb, #ffffff 12%, transparent);
   --hero-fallback: linear-gradient(160deg, #241f1a, #14110f 70%);
   --banner-fallback: linear-gradient(135deg, #241f1a, #14110f);
 }
@@ -147,6 +170,11 @@
   --scrim-strong: rgba(246, 247, 248, 0.94);
   --scrim-mid: rgba(246, 247, 248, 0.55);
   --scrim-soft: rgba(246, 247, 248, 0.2);
+  --player-void: #000000;
+  --on-media: #ffffff;
+  --overlay-fill: color-mix(in srgb, var(--bg-soft) 92%, transparent);
+  --overlay-fill-strong: var(--bg-hover);
+  --overlay-line: color-mix(in srgb, var(--line) 70%, transparent);
   --hero-fallback: linear-gradient(160deg, #eef0f2, #f6f7f8 70%);
   --banner-fallback: linear-gradient(135deg, #e8eaed, #f6f7f8);
 }

@@ -124,7 +124,7 @@ watch(
 
 <style scoped lang="scss">
 .rail {
-  margin-top: var(--space-6);
+  margin-top: var(--space-5);
 }
 
 .head {
@@ -133,7 +133,7 @@ watch(
   justify-content: space-between;
   gap: var(--space-4);
   margin-bottom: var(--space-3);
-  padding: 0 2px;
+  padding: 0;
 }
 
 .titles h2 {
@@ -159,17 +159,15 @@ watch(
 
 .viewport {
   position: relative;
-  margin: 0 -4px;
-  padding: 0 4px;
 }
 
 .track {
   display: flex;
   align-items: flex-start;
-  gap: 14px;
+  gap: var(--space-rail);
   overflow-x: auto;
   overflow-y: hidden;
-  padding: 6px 2px 2px;
+  padding: var(--space-1) 0 var(--space-1);
   scroll-behavior: smooth;
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -223,14 +221,14 @@ watch(
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: rgba(0, 0, 0, 0.55);
-  color: #fff;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  background: var(--scrim-mid);
+  color: var(--on-media);
+  box-shadow: var(--shadow-soft);
   transition: background 0.15s ease, transform 0.15s ease;
 }
 
 .edge:hover .chev {
-  background: rgba(0, 0, 0, 0.72);
+  background: var(--scrim-strong);
   transform: scale(1.06);
 }
 

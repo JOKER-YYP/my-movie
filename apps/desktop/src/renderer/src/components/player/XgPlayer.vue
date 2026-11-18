@@ -4,6 +4,12 @@ import Player from 'xgplayer'
 import HlsPlugin from 'xgplayer-hls'
 import 'xgplayer/dist/index.min.css'
 import { proxyUrl } from '@/api/vod'
+import {
+  EpisodesBtnPlugin,
+  MiniBtnPlugin,
+  SourcesBtnPlugin,
+  type PlayerToolbarAction,
+} from '@/components/player/plugins/actionBtn'
 
 const props = defineProps<{
   url: string
@@ -13,6 +19,10 @@ const props = defineProps<{
   useProxy?: boolean
   /** 续播起点（秒）；接近片尾则忽略 */
   startTime?: number
+  /** 小屏模式：更紧凑的播放器布局 */
+  compact?: boolean
+  /** 是否在控制栏显示选集/换源/小屏（全屏页默认开，小窗关） */
+  toolbarActions?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -21,6 +31,7 @@ const emit = defineEmits<{
   error: [message: string]
   ready: []
   proxyFallback: [usingProxy: boolean]
+  action: [action: PlayerToolbarAction]
 }>()
 
 const root = ref<HTMLDivElement | null>(null)
@@ -53,18 +64,27 @@ function trySeek() {
   seekApplied = true
 }
 
+function onMxAction(action: PlayerToolbarAction) {
+  emit('action', action)
+}
+
 function create(viaProxy: boolean) {
   if (!root.value || !props.url) return
   destroy()
   activeProxy = viaProxy
+  const showActions = props.toolbarActions !== false && !props.compact
   player = new Player({
     el: root.value,
     url: resolveUrl(props.url, viaProxy),
-    plugins: [HlsPlugin],
+    plugins: showActions
+      ? [HlsPlugin, EpisodesBtnPlugin, SourcesBtnPlugin, MiniBtnPlugin]
+      : [HlsPlugin],
     autoplay: props.autoplay ?? true,
-    fluid: true,
+    fluid: !props.compact,
+    width: props.compact ? '100%' : undefined,
+    height: props.compact ? '100%' : undefined,
     lang: 'zh-cn',
-    playbackRate: [0.5, 0.75, 1, 1.25, 1.5, 2],
+    playbackRate: props.compact ? [1, 1.25, 1.5, 2] : [0.5, 0.75, 1, 1.25, 1.5, 2],
     videoFillMode: 'contain',
     lastPlayTime: props.startTime && props.startTime >= 1 ? props.startTime : undefined,
     lastPlayTimeHideDelay: 3,
@@ -79,6 +99,7 @@ function create(viaProxy: boolean) {
       appendErrorMaxRetry: 5,
     },
   })
+  player.on('mxAction', onMxAction)
   player.on('loadedmetadata', () => {
     trySeek()
     emit('ready')
@@ -125,7 +146,7 @@ watch(
 </script>
 
 <template>
-  <div class="player-wrap">
+  <div class="player-wrap" :class="{ compact }">
     <div ref="root" class="player" />
   </div>
 </template>
@@ -133,11 +154,51 @@ watch(
 <style scoped lang="scss">
 .player-wrap {
   width: 100%;
-  background: #000;
+  height: 100%;
+  min-height: 280px;
+  background: var(--player-void);
+  display: flex;
+}
+
+.player-wrap.compact {
+  min-height: 0;
 }
 
 .player {
   width: 100%;
-  min-height: calc(100vh - 52px);
+  height: 100%;
+  min-height: inherit;
+  flex: 1;
+}
+
+.player :deep(.xgplayer) {
+  width: 100% !important;
+  height: 100% !important;
+  background: var(--player-void);
+}
+
+.player :deep(.xgplayer-mx-action) {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 40px;
+  padding: 0 var(--space-2);
+  color: var(--on-media);
+  opacity: 0.92;
+}
+
+.player :deep(.xgplayer-mx-action:hover) {
+  opacity: 1;
+}
+
+.player :deep(.mx-action-text) {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  white-space: nowrap;
+  user-select: none;
 }
 </style>

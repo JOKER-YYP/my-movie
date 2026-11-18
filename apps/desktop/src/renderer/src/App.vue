@@ -10,6 +10,7 @@ import {
   dateZhCN,
 } from 'naive-ui'
 import AppLayout from './components/layout/AppLayout.vue'
+import MiniPlayer from '@/components/player/MiniPlayer.vue'
 import { useSettingsStore } from '@/stores/settings'
 import { getThemePreset } from '@/themes/presets'
 
@@ -32,6 +33,7 @@ const themeOverrides = computed(() => getThemePreset(settings.themeId).naive)
     <NMessageProvider>
       <NDialogProvider>
         <AppLayout />
+        <MiniPlayer />
       </NDialogProvider>
     </NMessageProvider>
   </NConfigProvider>

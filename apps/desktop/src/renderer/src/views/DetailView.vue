@@ -181,27 +181,27 @@ watch([source, id], load, { immediate: true })
 .poster {
   width: 100%;
   aspect-ratio: 2 / 3;
-  border-radius: 8px;
+  border-radius: var(--radius);
   background: var(--bg-card) center/cover no-repeat;
   box-shadow: var(--shadow-soft);
 }
 
 h1 {
-  margin: 0 0 12px;
+  margin: 0 0 var(--space-3);
   font-size: 24px;
 }
 
 .meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 14px;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
 }
 
 .pill {
   display: inline-flex;
   align-items: center;
-  padding: 4px 10px;
+  padding: var(--chip-pad-sm);
   border-radius: var(--radius-pill);
   background: var(--bg-soft);
   color: var(--text-muted);
@@ -218,16 +218,16 @@ h1 {
 .actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  margin: 18px 0 8px;
+  gap: var(--space-3);
+  margin: var(--space-5) 0 var(--space-2);
 }
 
 .lines,
 .eps {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 12px;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
 }
 
 .chip,
@@ -236,10 +236,11 @@ h1 {
   background: var(--bg-soft);
   color: var(--text-muted);
   border-radius: var(--radius-pill);
-  padding: 8px 14px;
+  padding: var(--chip-pad);
   cursor: pointer;
   font-weight: 700;
   font-size: 12px;
+  letter-spacing: 0.04em;
   transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
 }
 

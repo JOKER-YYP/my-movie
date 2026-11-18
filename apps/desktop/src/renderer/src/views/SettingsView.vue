@@ -18,10 +18,11 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div>
-    <h1>设置</h1>
+  <div class="page">
+    <h1 class="page-title">设置</h1>
+    <p class="page-hint">外观、播放偏好与采集源开关</p>
 
-    <NCard title="外观" style="margin-top: 16px">
+    <NCard title="外观" class="card">
       <div class="theme-grid">
         <button
           v-for="t in THEME_PRESETS"
@@ -44,7 +45,7 @@ onMounted(async () => {
       </div>
     </NCard>
 
-    <NCard title="播放" style="margin-top: 16px">
+    <NCard title="播放" class="card">
       <div class="row">
         <div>
           <div class="name">自动连播下一集</div>
@@ -61,7 +62,7 @@ onMounted(async () => {
       </div>
     </NCard>
 
-    <NCard title="采集源（LibreTV）" style="margin-top: 16px">
+    <NCard title="采集源（LibreTV）" class="card">
       <NSpace vertical>
         <div v-for="s in sourcesStore.all" :key="s.key" class="row">
           <div>
@@ -79,45 +80,50 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-h1 {
-  margin: 0;
+.card {
+  margin-top: var(--space-4);
+  background: var(--bg-elevated);
+  border: 0;
+  box-shadow: none;
+}
+
+.card:first-of-type {
+  margin-top: 0;
 }
 
 .theme-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .theme-card {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-3);
   text-align: left;
-  border: 1px solid var(--line);
+  border: 1px solid transparent;
   background: var(--bg-soft);
   color: var(--text);
   border-radius: var(--radius);
-  padding: 12px;
+  padding: var(--space-3);
   cursor: pointer;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
 }
 
 .theme-card:hover {
-  border-color: var(--line-strong);
-  transform: translateY(-1px);
+  background: var(--bg-hover);
 }
 
 .theme-card.active {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent);
+  box-shadow: 0 0 0 2px var(--accent);
 }
 
 .swatch {
   display: grid;
-  grid-template-columns: 1.4fr 0.7fr 1fr;
-  height: 44px;
-  border-radius: 6px;
+  grid-template-columns: 1.4fr 1fr 1fr;
+  height: 36px;
+  border-radius: var(--radius-sm);
   overflow: hidden;
 }
 
@@ -126,24 +132,23 @@ h1 {
 }
 
 .theme-meta .name {
+  font-weight: 700;
   margin-bottom: 2px;
 }
 
 .row {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  gap: 16px;
-  padding: 14px 0;
-  border-bottom: 1px solid var(--line);
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) 0;
 }
 
-.row:last-child {
-  border-bottom: 0;
+.row + .row {
+  border-top: 1px solid color-mix(in srgb, var(--line) 35%, transparent);
 }
 
 .name {
   font-weight: 700;
-  margin-bottom: 4px;
 }
 </style>
