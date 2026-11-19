@@ -11,7 +11,10 @@ import { fetchProgress, reportProgress } from '@/utils/progress'
 import { useAltSources } from '@/composables/useAltSources'
 import SourceSwitch from '@/components/media/SourceSwitch.vue'
 import { useMiniPlayerStore } from '@/stores/miniPlayer'
-import type { PlayerToolbarAction } from '@/components/player/plugins/actionBtn'
+import type {
+  PlayerSourceOption,
+  PlayerToolbarAction,
+} from '@/components/player/plugins/actionBtn'
 
 const route = useRoute()
 const router = useRouter()
@@ -31,9 +34,6 @@ const playerEpoch = ref(0)
 const currentPlaySec = ref(0)
 const currentDuration = ref(0)
 const epGridRef = ref<HTMLElement | null>(null)
-/** 播放器内弹出的选集 / 换源面板 */
-const stageSheet = ref<'episodes' | 'sources' | null>(null)
-const sheetEpGridRef = ref<HTMLElement | null>(null)
 const { alts, loading: altsLoading, loadAlts } = useAltSources()
 
 const source = computed(() => String(route.params.source || ''))
@@ -46,6 +46,28 @@ const hasPrev = computed(() => epIndex.value > 0)
 const episodeLabel = computed(() => {
   if (!episodes.value.length) return ''
   return `${epIndex.value + 1} / ${episodes.value.length}`
+})
+/** 播放器内选集：仅当前源当前线路 */
+const playerEpisodes = computed(() =>
+  episodes.value.map((ep) => ({ index: ep.index, name: ep.name })),
+)
+/** 播放器内换源：当前源 + 同名其它源 */
+const playerSources = computed<PlayerSourceOption[]>(() => {
+  if (!detail.value) return []
+  const current: PlayerSourceOption = {
+    sourceKey: detail.value.sourceKey,
+    vodId: detail.value.vodId,
+    sourceName: detail.value.sourceName,
+    current: true,
+  }
+  const others = alts.value.map((item) => ({
+    sourceKey: item.sourceKey,
+    vodId: item.vodId,
+    sourceName: item.sourceName,
+    remarks: item.remarks,
+    current: false,
+  }))
+  return [current, ...others]
 })
 /** 本片已分离到悬浮小屏：主舞台不挂播放器，避免双实例抢流 */
 const detachedToMini = computed(() => {
@@ -90,7 +112,6 @@ function openMiniPlayer() {
     return
   }
   clearCountdown()
-  stageSheet.value = null
   const pos = Math.max(
     0,
     Math.floor(currentPlaySec.value > 1 ? currentPlaySec.value : resumeSec.value || 0),
@@ -122,7 +143,6 @@ function reclaimFromMini() {
 async function load() {
   loading.value = true
   clearCountdown()
-  stageSheet.value = null
   resumeSec.value = 0
   try {
     detail.value = await fetchDetail(source.value, id.value)
@@ -255,57 +275,38 @@ function selectLine(index: number) {
   playerEpoch.value += 1
   syncQuery()
   if (detachedToMini.value) syncMiniPlaylist()
-  if (stageSheet.value === 'episodes') void scrollSheetEpisodeIntoView()
 }
 
 function selectEpisode(index: number) {
-  if (index === epIndex.value) {
-    stageSheet.value = null
-    return
-  }
+  if (index === epIndex.value) return
   clearCountdown()
   epIndex.value = clampEpisode(index)
   resumeSec.value = 0
   playerEpoch.value += 1
   syncQuery()
-  stageSheet.value = null
   if (detachedToMini.value) syncMiniPlaylist()
   void scrollActiveEpisodeIntoView()
 }
 
-function closeStageSheet() {
-  stageSheet.value = null
-}
-
 function onPlayerAction(action: PlayerToolbarAction) {
-  if (action === 'mini') {
-    openMiniPlayer()
-    return
-  }
-  if (action === 'episodes') {
-    stageSheet.value = stageSheet.value === 'episodes' ? null : 'episodes'
-    if (stageSheet.value === 'episodes') void scrollSheetEpisodeIntoView()
-    return
-  }
-  if (action === 'sources') {
-    stageSheet.value = stageSheet.value === 'sources' ? null : 'sources'
-  }
+  if (action === 'mini') openMiniPlayer()
 }
 
-function onSheetSelectSource(item: VodSearchItem) {
-  stageSheet.value = null
-  switchSource(item)
+function onPlayerSelectSource(item: PlayerSourceOption) {
+  if (item.current) return
+  switchSource({
+    sourceKey: item.sourceKey,
+    vodId: item.vodId,
+    sourceName: item.sourceName,
+    title: detail.value?.title || item.sourceName,
+    cover: detail.value?.cover || '',
+    remarks: item.remarks,
+  })
 }
 
 async function scrollActiveEpisodeIntoView() {
   await nextTick()
   const el = epGridRef.value?.querySelector<HTMLElement>('.ep.active')
-  el?.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' })
-}
-
-async function scrollSheetEpisodeIntoView() {
-  await nextTick()
-  const el = sheetEpGridRef.value?.querySelector<HTMLElement>('.ep.active')
   el?.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' })
 }
 
@@ -409,9 +410,14 @@ onBeforeUnmount(clearCountdown)
         :use-proxy="useProxy"
         :start-time="resumeSec"
         :toolbar-actions="true"
+        :episodes="playerEpisodes"
+        :episode-index="epIndex"
+        :sources="playerSources"
         @timeupdate="onTimeupdate"
         @ended="onEnded"
         @action="onPlayerAction"
+        @select-episode="selectEpisode"
+        @select-source="onPlayerSelectSource"
         @proxy-fallback="
           (via) => {
             useProxy = via
@@ -428,66 +434,6 @@ onBeforeUnmount(clearCountdown)
       <div v-else class="empty" role="status">
         <strong>{{ loading ? '正在打开播放器' : '暂无可播放地址' }}</strong>
         <p v-if="!loading">可尝试开启代理，或在下方换源</p>
-      </div>
-
-      <div
-        v-if="stageSheet"
-        class="stage-sheet"
-        role="dialog"
-        :aria-label="stageSheet === 'episodes' ? '选集' : '换源'"
-      >
-        <div class="sheet-head">
-          <strong>{{ stageSheet === 'episodes' ? '选集' : '换源' }}</strong>
-          <span v-if="stageSheet === 'episodes' && episodeLabel" class="sheet-meta">{{
-            episodeLabel
-          }}</span>
-          <button type="button" class="sheet-close" aria-label="关闭" @click="closeStageSheet">
-            关闭
-          </button>
-        </div>
-
-        <template v-if="stageSheet === 'episodes'">
-          <div v-if="lines.length > 1" class="sheet-lines" role="tablist" aria-label="播放线路">
-            <button
-              v-for="(line, i) in lines"
-              :key="`sheet-${line.name}-${i}`"
-              type="button"
-              role="tab"
-              class="line"
-              :class="{ active: i === lineIndex }"
-              :aria-selected="i === lineIndex"
-              @click="selectLine(i)"
-            >
-              {{ line.name }}
-              <em>{{ line.episodes.length }}</em>
-            </button>
-          </div>
-          <div v-if="episodes.length" ref="sheetEpGridRef" class="ep-grid sheet-eps">
-            <button
-              v-for="ep in episodes"
-              :key="`sheet-ep-${ep.index}`"
-              type="button"
-              class="ep"
-              :class="{ active: ep.index === epIndex }"
-              :aria-current="ep.index === epIndex ? 'true' : undefined"
-              @click="selectEpisode(ep.index)"
-            >
-              {{ ep.name }}
-            </button>
-          </div>
-          <p v-else class="hint">{{ loading ? '正在加载分集…' : '暂无分集信息' }}</p>
-        </template>
-
-        <div v-else class="sheet-sources">
-          <SourceSwitch
-            v-if="detail"
-            :current-source="detail.sourceKey"
-            :current-name="detail.sourceName"
-            :items="alts"
-            :loading="altsLoading"
-            @select="onSheetSelectSource"
-          />
-        </div>
       </div>
     </div>
 
@@ -660,92 +606,6 @@ onBeforeUnmount(clearCountdown)
   height: 100%;
   min-height: 0;
   flex: 1;
-}
-
-.stage-sheet {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 20;
-  max-height: min(72%, 420px);
-  display: flex;
-  flex-direction: column;
-  padding: var(--space-3) var(--space-4) var(--space-4);
-  background: var(--scrim-strong);
-  border-top: 1px solid color-mix(in srgb, var(--line) 40%, transparent);
-  backdrop-filter: blur(10px);
-  animation: sheet-up 0.2s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.sheet-head {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin-bottom: var(--space-3);
-  flex-shrink: 0;
-}
-
-.sheet-head strong {
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-}
-
-.sheet-meta {
-  color: var(--text-dim);
-  font-size: 12px;
-}
-
-.sheet-close {
-  margin-left: auto;
-  border: 0;
-  background: var(--bg-soft);
-  color: var(--text);
-  border-radius: var(--radius-pill);
-  padding: var(--chip-pad);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  cursor: pointer;
-}
-
-.sheet-close:hover {
-  background: var(--bg-hover);
-}
-
-.sheet-lines {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  margin-bottom: var(--space-3);
-  flex-shrink: 0;
-}
-
-.sheet-eps {
-  overflow: auto;
-  min-height: 0;
-  padding-bottom: 4px;
-}
-
-.sheet-sources {
-  overflow: auto;
-  min-height: 0;
-}
-
-.sheet-sources :deep(.switch) {
-  margin-top: 0;
-}
-
-@keyframes sheet-up {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
 }
 
 .empty {

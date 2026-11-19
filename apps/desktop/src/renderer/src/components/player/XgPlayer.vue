@@ -8,6 +8,10 @@ import {
   EpisodesBtnPlugin,
   MiniBtnPlugin,
   SourcesBtnPlugin,
+  toEpisodeMenuItems,
+  toSourceMenuItems,
+  type PlayerEpisodeOption,
+  type PlayerSourceOption,
   type PlayerToolbarAction,
 } from '@/components/player/plugins/actionBtn'
 
@@ -23,6 +27,11 @@ const props = defineProps<{
   compact?: boolean
   /** 是否在控制栏显示选集/换源/小屏（全屏页默认开，小窗关） */
   toolbarActions?: boolean
+  /** 当前源分集（仅本源） */
+  episodes?: PlayerEpisodeOption[]
+  episodeIndex?: number
+  /** 换源列表（含当前源） */
+  sources?: PlayerSourceOption[]
 }>()
 
 const emit = defineEmits<{
@@ -32,6 +41,8 @@ const emit = defineEmits<{
   ready: []
   proxyFallback: [usingProxy: boolean]
   action: [action: PlayerToolbarAction]
+  selectEpisode: [index: number]
+  selectSource: [item: PlayerSourceOption]
 }>()
 
 const root = ref<HTMLDivElement | null>(null)
@@ -68,11 +79,44 @@ function onMxAction(action: PlayerToolbarAction) {
   emit('action', action)
 }
 
+function onSelectEpisode(item: { id?: string }) {
+  const index = Number(item?.id)
+  if (!Number.isFinite(index)) return
+  emit('selectEpisode', index)
+}
+
+function onSelectSource(item: { id?: string }) {
+  const id = String(item?.id || '')
+  const [sourceKey, vodId] = id.split('::')
+  if (!sourceKey || !vodId) return
+  const found = (props.sources || []).find((s) => s.sourceKey === sourceKey && s.vodId === vodId)
+  if (!found || found.current) return
+  emit('selectSource', found)
+}
+
+function syncMenus() {
+  if (!player) return
+  const epPlugin = player.getPlugin?.('mxEpisodes') as { updateList?: (list: unknown[]) => void } | null
+  const srcPlugin = player.getPlugin?.('mxSources') as { updateList?: (list: unknown[]) => void } | null
+  // xgplayer 内部插件名可能小写
+  const ep =
+    epPlugin ||
+    (player.getPlugin?.('mxepisodes') as { updateList?: (list: unknown[]) => void } | null)
+  const src =
+    srcPlugin ||
+    (player.getPlugin?.('mxsources') as { updateList?: (list: unknown[]) => void } | null)
+  ep?.updateList?.(toEpisodeMenuItems(props.episodes || [], props.episodeIndex ?? 0))
+  src?.updateList?.(toSourceMenuItems(props.sources || []))
+}
+
 function create(viaProxy: boolean) {
   if (!root.value || !props.url) return
   destroy()
   activeProxy = viaProxy
   const showActions = props.toolbarActions !== false && !props.compact
+  const episodeList = toEpisodeMenuItems(props.episodes || [], props.episodeIndex ?? 0)
+  const sourceList = toSourceMenuItems(props.sources || [])
+
   // 铺满父容器；真正全屏交给播放器自带 fullscreen，不占满整页
   player = new Player({
     el: root.value,
@@ -91,6 +135,8 @@ function create(viaProxy: boolean) {
     videoFillMode: 'contain',
     lastPlayTime: props.startTime && props.startTime >= 1 ? props.startTime : undefined,
     lastPlayTimeHideDelay: 3,
+    mxEpisodes: { list: episodeList },
+    mxSources: { list: sourceList },
     // 对齐 LibreTV hls 重试参数，降低偶发分片失败
     hls: {
       enableWorker: true,
@@ -103,6 +149,8 @@ function create(viaProxy: boolean) {
     },
   })
   player.on('mxAction', onMxAction)
+  player.on('mxSelectEpisode', onSelectEpisode)
+  player.on('mxSelectSource', onSelectSource)
   player.on('loadedmetadata', () => {
     trySeek()
     emit('ready')
@@ -146,6 +194,11 @@ watch(
     trySeek()
   },
 )
+watch(
+  () => [props.episodes, props.episodeIndex, props.sources] as const,
+  () => syncMenus(),
+  { deep: true },
+)
 </script>
 
 <template>
@@ -180,6 +233,7 @@ watch(
 }
 
 .player :deep(.xgplayer-mx-action) {
+  position: relative;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -191,7 +245,8 @@ watch(
   opacity: 0.92;
 }
 
-.player :deep(.xgplayer-mx-action:hover) {
+.player :deep(.xgplayer-mx-action:hover),
+.player :deep(.xgplayer-mx-menu.is-open) {
   opacity: 1;
 }
 
@@ -202,5 +257,95 @@ watch(
   line-height: 1;
   white-space: nowrap;
   user-select: none;
+}
+
+.player :deep(.mx-menu-panel) {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 10px);
+  transform: translateX(-50%) translateY(6px);
+  z-index: 30;
+  min-width: 168px;
+  max-width: min(280px, 70vw);
+  max-height: min(280px, 46vh);
+  padding: 8px;
+  border-radius: 10px;
+  background: rgba(18, 18, 18, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.15s ease, transform 0.15s ease, visibility 0.15s ease;
+}
+
+.player :deep(.xgplayer-mx-menu.is-open .mx-menu-panel) {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translateX(-50%) translateY(0);
+}
+
+.player :deep(.mx-menu-body) {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: min(256px, 42vh);
+  overflow: auto;
+}
+
+.player :deep(.mx-menu-item) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.86);
+  text-align: left;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.player :deep(.mx-menu-item span) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.player :deep(.mx-menu-item:hover:not(.is-disabled)) {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.player :deep(.mx-menu-item.is-active) {
+  background: var(--accent, #1ed760);
+  color: var(--on-accent, #000);
+}
+
+.player :deep(.mx-menu-item.is-disabled) {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.player :deep(.mx-menu-meta) {
+  flex-shrink: 0;
+  font-style: normal;
+  font-weight: 400;
+  font-size: 11px;
+  opacity: 0.75;
+}
+
+.player :deep(.mx-menu-empty) {
+  padding: 10px;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 12px;
+  text-align: center;
 }
 </style>
