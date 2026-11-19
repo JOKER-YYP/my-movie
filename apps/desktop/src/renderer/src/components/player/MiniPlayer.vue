@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useMessage } from 'naive-ui'
 import XgPlayer from '@/components/player/XgPlayer.vue'
@@ -36,19 +36,6 @@ const panelStyle = computed(() => ({
   right: `${mini.offset.x}px`,
   bottom: `${mini.offset.y}px`,
 }))
-
-/** 回到同片全屏页时，把小窗让给全屏播放器 */
-watch(
-  () => [route.name, route.params.source, route.params.id, mini.active] as const,
-  ([name, source, id, active]) => {
-    if (!active || name !== 'play') return
-    const s = session.value
-    if (!s) return
-    if (String(source) === s.sourceKey && String(id) === s.vodId) {
-      mini.close()
-    }
-  },
-)
 
 function onTimeupdate(payload: { currentTime: number; duration: number }) {
   const s = session.value
@@ -88,6 +75,15 @@ function onEnded() {
 function expand() {
   const s = session.value
   if (!s) return
+  const onSamePlayPage =
+    route.name === 'play' &&
+    String(route.params.source) === s.sourceKey &&
+    String(route.params.id) === s.vodId
+  if (onSamePlayPage) {
+    // 留在本页：关闭小屏，由 PlayView 接手进度
+    mini.close()
+    return
+  }
   const t = Math.max(0, Math.floor(s.positionSec || 0))
   const path = `/play/${s.sourceKey}/${s.vodId}`
   const query = {

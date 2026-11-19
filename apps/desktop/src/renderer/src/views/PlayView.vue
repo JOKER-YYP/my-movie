@@ -47,6 +47,11 @@ const episodeLabel = computed(() => {
   if (!episodes.value.length) return ''
   return `${epIndex.value + 1} / ${episodes.value.length}`
 })
+/** 本片已分离到悬浮小屏：主舞台不挂播放器，避免双实例抢流 */
+const detachedToMini = computed(() => {
+  const s = miniPlayer.session
+  return Boolean(s && s.sourceKey === source.value && s.vodId === id.value)
+})
 
 let lastReport = 0
 let countdownTimer: ReturnType<typeof setInterval> | null = null
@@ -80,7 +85,12 @@ function openMiniPlayer() {
     message.warning('当前没有可播放内容')
     return
   }
+  if (detachedToMini.value) {
+    message.info('已在小屏播放')
+    return
+  }
   clearCountdown()
+  stageSheet.value = null
   const pos = Math.max(
     0,
     Math.floor(currentPlaySec.value > 1 ? currentPlaySec.value : resumeSec.value || 0),
@@ -98,9 +108,15 @@ function openMiniPlayer() {
     positionSec: pos,
     useProxy: useProxy.value,
   })
-  message.success('已切换到小屏播放')
-  if (window.history.length > 1) router.back()
-  else router.push('/')
+  message.success('已分离到小屏，可继续浏览本页')
+}
+
+/** 把小屏进度收回主舞台（进度由 session→null 的 watch 接手） */
+function reclaimFromMini() {
+  const s = miniPlayer.session
+  if (!s || s.sourceKey !== source.value || s.vodId !== id.value) return
+  miniPlayer.close()
+  message.success('已还原到播放页')
 }
 
 async function load() {
@@ -111,24 +127,21 @@ async function load() {
   try {
     detail.value = await fetchDetail(source.value, id.value)
 
-    // 从小屏还原：优先接手小窗进度
-    const mini = miniPlayer.session
-    const fromMini =
-      mini && mini.sourceKey === source.value && mini.vodId === id.value
-        ? { ...mini }
-        : null
-    if (fromMini) miniPlayer.close()
-
     const explicitEp = route.query.ep != null && route.query.ep !== ''
     const forceResume = route.query.resume === '1'
     const switchTime = Number(route.query.t || 0)
     const progress = await fetchProgress(source.value, id.value, userStore.token || undefined)
 
-    if (fromMini) {
-      epIndex.value = fromMini.episodeIndex
-      lineIndex.value = fromMini.lineIndex
-      resumeSec.value = fromMini.positionSec > 1 ? fromMini.positionSec : 0
-      useProxy.value = fromMini.useProxy
+    // 同片小屏仍在播：主舞台保持分离，只对齐集数状态，不关闭小屏
+    const mini = miniPlayer.session
+    const sameMini =
+      mini && mini.sourceKey === source.value && mini.vodId === id.value ? mini : null
+
+    if (sameMini) {
+      epIndex.value = sameMini.episodeIndex
+      lineIndex.value = sameMini.lineIndex
+      resumeSec.value = sameMini.positionSec > 1 ? sameMini.positionSec : 0
+      useProxy.value = sameMini.useProxy
     } else if (forceResume && progress) {
       epIndex.value = progress.episodeIndex
       lineIndex.value = progress.lineIndex ?? Number(route.query.line || 0)
@@ -170,6 +183,7 @@ async function load() {
 
 function switchSource(item: VodSearchItem) {
   clearCountdown()
+  if (miniPlayer.session) miniPlayer.close()
   const keepEp = epIndex.value
   const keepTime = Math.max(
     0,
@@ -213,6 +227,25 @@ async function onTimeupdate(payload: { currentTime: number; duration: number }) 
   )
 }
 
+function syncMiniPlaylist() {
+  if (!detachedToMini.value || !detail.value) return
+  const s = miniPlayer.session
+  if (!s) return
+  const eps = episodes.value
+  const clamped = clampEpisode(epIndex.value)
+  const ep = eps[clamped]
+  if (!ep?.url) return
+  miniPlayer.open({
+    ...s,
+    lineIndex: lineIndex.value,
+    episodeIndex: clamped,
+    episodes: eps,
+    url: ep.url,
+    positionSec: 0,
+    useProxy: useProxy.value,
+  })
+}
+
 function selectLine(index: number) {
   if (index === lineIndex.value) return
   clearCountdown()
@@ -221,6 +254,7 @@ function selectLine(index: number) {
   resumeSec.value = 0
   playerEpoch.value += 1
   syncQuery()
+  if (detachedToMini.value) syncMiniPlaylist()
   if (stageSheet.value === 'episodes') void scrollSheetEpisodeIntoView()
 }
 
@@ -235,6 +269,7 @@ function selectEpisode(index: number) {
   playerEpoch.value += 1
   syncQuery()
   stageSheet.value = null
+  if (detachedToMini.value) syncMiniPlaylist()
   void scrollActiveEpisodeIntoView()
 }
 
@@ -290,6 +325,7 @@ function goNext() {
   resumeSec.value = 0
   playerEpoch.value += 1
   syncQuery()
+  if (detachedToMini.value) syncMiniPlaylist()
   const name = episodes.value[next]?.name
   message.success(`正在播放：${name || `第 ${next + 1} 集`}`)
 }
@@ -322,6 +358,22 @@ watch([source, id], load, { immediate: true })
 watch(epIndex, () => {
   void scrollActiveEpisodeIntoView()
 })
+/** 小屏在本页点「还原/关闭」后，把进度收回主舞台 */
+watch(
+  () => miniPlayer.session,
+  (next, prev) => {
+    if (next || !prev) return
+    if (prev.sourceKey !== source.value || prev.vodId !== id.value) return
+    // reclaimFromMini 已处理过则 session 已空且 epoch 已加；关闭小屏同样接手进度
+    epIndex.value = clampEpisode(prev.episodeIndex)
+    lineIndex.value = prev.lineIndex
+    resumeSec.value = prev.positionSec > 1 ? prev.positionSec : 0
+    useProxy.value = prev.useProxy
+    currentPlaySec.value = resumeSec.value
+    playerEpoch.value += 1
+    syncQuery()
+  },
+)
 onBeforeUnmount(clearCountdown)
 </script>
 
@@ -350,7 +402,7 @@ onBeforeUnmount(clearCountdown)
 
     <div class="stage">
       <XgPlayer
-        v-if="episode?.url && !loading"
+        v-if="episode?.url && !loading && !detachedToMini"
         :key="`${playerEpoch}-${episode.url}`"
         :url="episode.url"
         :title="detail?.title"
@@ -368,6 +420,11 @@ onBeforeUnmount(clearCountdown)
         "
         @error="(msg) => message.error(msg)"
       />
+      <div v-else-if="detachedToMini" class="empty detached" role="status">
+        <strong>小屏播放中</strong>
+        <p>画面已分离到悬浮窗，本页可继续选集 / 换源</p>
+        <button type="button" class="pill primary" @click="reclaimFromMini">还原到此处</button>
+      </div>
       <div v-else class="empty" role="status">
         <strong>{{ loading ? '正在打开播放器' : '暂无可播放地址' }}</strong>
         <p v-if="!loading">可尝试开启代理，或在下方换源</p>
@@ -710,6 +767,17 @@ onBeforeUnmount(clearCountdown)
   margin: 0;
   font-size: 13px;
   color: var(--text-dim);
+}
+
+.empty.detached {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.empty.detached .pill {
+  margin-top: var(--space-2);
 }
 
 .panel {
