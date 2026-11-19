@@ -586,13 +586,15 @@ onBeforeUnmount(clearCountdown)
 .stage {
   position: relative;
   flex: 0 0 auto;
-  width: 100%;
+  width: 80%;
+  max-width: 1280px;
   aspect-ratio: 16 / 9;
-  max-height: min(58vh, 720px);
   min-height: 220px;
+  margin: 0 auto;
   display: flex;
   background: var(--player-void);
   overflow: hidden;
+  border-radius: 0 0 var(--radius) var(--radius);
 }
 
 .stage :deep(.player-wrap),
@@ -711,9 +713,7 @@ onBeforeUnmount(clearCountdown)
 }
 
 .panel {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: auto;
+  flex: 0 0 auto;
   padding: var(--space-4) var(--page-x) var(--space-7);
   background: var(--bg);
   border-top: 1px solid color-mix(in srgb, var(--line) 28%, transparent);
@@ -940,8 +940,10 @@ onBeforeUnmount(clearCountdown)
 
 @media (max-width: 960px) {
   .stage {
-    max-height: 42vh;
+    width: 100%;
+    max-width: none;
     min-height: 180px;
+    border-radius: 0;
   }
 
   .tools-spacer {

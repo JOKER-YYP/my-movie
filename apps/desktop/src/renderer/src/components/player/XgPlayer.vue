@@ -73,6 +73,7 @@ function create(viaProxy: boolean) {
   destroy()
   activeProxy = viaProxy
   const showActions = props.toolbarActions !== false && !props.compact
+  // 铺满父容器；真正全屏交给播放器自带 fullscreen，不占满整页
   player = new Player({
     el: root.value,
     url: resolveUrl(props.url, viaProxy),
@@ -80,10 +81,12 @@ function create(viaProxy: boolean) {
       ? [HlsPlugin, EpisodesBtnPlugin, SourcesBtnPlugin, MiniBtnPlugin]
       : [HlsPlugin],
     autoplay: props.autoplay ?? true,
-    fluid: !props.compact,
-    width: props.compact ? '100%' : undefined,
-    height: props.compact ? '100%' : undefined,
+    fluid: false,
+    width: '100%',
+    height: '100%',
     lang: 'zh-cn',
+    fullscreen: true,
+    cssFullscreen: true,
     playbackRate: props.compact ? [1, 1.25, 1.5, 2] : [0.5, 0.75, 1, 1.25, 1.5, 2],
     videoFillMode: 'contain',
     lastPlayTime: props.startTime && props.startTime >= 1 ? props.startTime : undefined,
@@ -155,23 +158,22 @@ watch(
 .player-wrap {
   width: 100%;
   height: 100%;
-  min-height: 280px;
+  min-height: 0;
   background: var(--player-void);
   display: flex;
-}
-
-.player-wrap.compact {
-  min-height: 0;
 }
 
 .player {
   width: 100%;
   height: 100%;
-  min-height: inherit;
+  min-height: 0;
   flex: 1;
+  position: relative;
 }
 
 .player :deep(.xgplayer) {
+  position: absolute !important;
+  inset: 0 !important;
   width: 100% !important;
   height: 100% !important;
   background: var(--player-void);
